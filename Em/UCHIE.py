@@ -43,7 +43,7 @@ def matrices_construct():
     M = np.vstack((M1, M2)) 
 
     L1 = np.hstack((-1/dx*np.array(Ad), 1/dt*np.array(Ai)))
-    L2 = np.hstack((ebs/dt - sigma/2*np.array(Ai), -1/(mu*dx)*np.array(Ai)))
+    L2 = np.hstack(((ebs/dt - sigma/2)*np.array(Ai), -1/(mu*dx)*np.array(Ai)))
     L = np.vstack((L1, L2))
 
     Y = np.zeros((Nx, Ny))
