@@ -46,13 +46,10 @@ def matrices_construct():
     L2 = np.hstack(((ebs/dt - sigma/2)*np.array(Ai), -1/(mu*dx)*np.array(Ai)))
     L = np.vstack((L1, L2))
 
-    Y = np.zeros((Nx, Ny))
-    Ytot = np.vstack((Y, np.zeros((Nx, Ny))))
-
-    return np.array(Ad), np.array(Ai),M, L, Ytot
+    return np.array(Ad), np.array(Ai),M, L
 
 matrices_construct()
-AD, AI, M, L, Ytot = matrices_construct()
+AD, AI, M, L = matrices_construct()
 
 # X contains values of Ey and Bz
 X = np.zeros((2*Nx+2, Ny))
