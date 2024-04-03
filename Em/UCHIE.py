@@ -24,10 +24,7 @@ tarray = np.linspace(0, Nt*dt, Nt)
 print("Courant Number: {}\nTimestep: {}".format(CL, dt))
 
 # Define the fields
-# How do we choose what dimension bigger: pg 14 syllabus
-# Ex one bigger in Nx
-# Ey one bigger in Ny
-# Bz one bigger in Nx and Ny
+
 X = np.zeros((2*Nx+2, Ny))
 
 def matrices_construct():
@@ -59,40 +56,34 @@ AD, AI, M, L, Ytot = matrices_construct()
 
 # X contains values of Ey and Bz
 X = np.zeros((2*Nx+2, Ny))
-# print("AD shape: {}, AI shape: {}".format(AD.shape, AI.shape))
-# print("AD: \n{}\nAI:\n{}".format(AD, AI))
+
 print("M shape: {}".format(M.shape))
 # print("M: \n{}".format(M))
 
-# from Boundary add two rows to M and L
-#Left BC
-BCL = np.zeros((1, 2*Nx+2))
-BCL[0,0] = 1
-BCL[0, Nx] = -1
-M = np.vstack((M, BCL))
+# Periodic Boundary Conditions 1
+BC1 = np.zeros((1, 2*Nx+2))
+BC1[0,0] = 1
+BC1[0, Nx] = -1
+M = np.vstack((M, BC1))
 L = np.vstack((L, np.zeros((1,2 *Nx+2))))
-#Right BC
-BCR = np.zeros((1, 2*Nx+2))
-BCR[0,Nx+1] = 1
-BCR[0, -1] = -1
-M = np.vstack((M, BCR))
+#Periodic Boundary Conditions 2
+BC2 = np.zeros((1, 2*Nx+2))
+BC2[0,Nx+1] = 1
+BC2[0, -1] = -1
+M = np.vstack((M, BC2))
 L = np.vstack((L, np.zeros((1, 2*Nx+2))))
-# make Determinant of M
-detM = np.linalg.det(M)
-print("Determinant of M: {}".format(detM))
+# check determinant of M non-zero
+# detM = np.linalg.det(M)
+# print("Determinant of M: {}".format(detM))
 
 Minv = np.linalg.inv(M)
-# Matrix multiplication
 MinvL = np.matmul(Minv, L)
 
-# print("Minv shape: {}".format(Minv.shape))
-# print("Minv: \n{}".format(Minv))
 #source specs
 source = GaussianSource(tc=15, sigma=3)
 
-print("MinvL shape: {}".format(MinvL.shape))
-Ex = np.zeros((Nx+1, Ny+1))
-print("Ex shape: {}".format(Ex.shape))
+Ex = np.zeros((Nx+1, Ny+1)) 
+# Create fig for animation
 fig, ax = plt.subplots()
 artists = []
 for it in range(Nt):
