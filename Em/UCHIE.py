@@ -2,9 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import ArtistAnimation
 from sources import GaussianSource
+import math
 # material properties
-ebs = 1.0
-mu = 1.0
+ebs = 8.854 * 10**(-12) # Permittivity of free space F/m
+mu = 4 * math.pi * 10**(-7) # Permeability of free space H/m
 sigma = 0.0
 
 # Define the grid
@@ -16,9 +17,9 @@ Lx = 1.0
 dx = Lx/Nx
 dy = Ly/Ny
 # Courant Number and resulting timestep
-CL = 0.8
-c = 1.0 # Speed of light
-dt = CL/(c*np.sqrt(1.0/dx**2 + 1.0/dy**2))
+CL = 0.9
+c = 3 * 10**8  # Speed of light m/s
+dt = CL/(c*np.sqrt(1.0/dx**2))
 tarray = np.linspace(0, Nt*dt, Nt)
 print("Courant Number: {}\nTimestep: {}".format(CL, dt))
 
@@ -67,15 +68,15 @@ print("M shape: {}".format(M.shape))
 #Left BC
 BCL = np.zeros((1, 2*Nx+2))
 BCL[0,0] = 1
-BCL[0, Nx+1] = 1
-M = np.vstack((BCL, M))
-L = np.vstack((BCL, L))
+BCL[0, Nx] = -1
+M = np.vstack((M, BCL))
+L = np.vstack((L, np.zeros((1,2 *Nx+2))))
 #Right BC
 BCR = np.zeros((1, 2*Nx+2))
-# BCR[0,Nx] = 1
-BCR[0, -1] = 1
+BCR[0,Nx+1] = 1
+BCR[0, -1] = -1
 M = np.vstack((M, BCR))
-L = np.vstack((L, BCR))
+L = np.vstack((L, np.zeros((1, 2*Nx+2))))
 # make Determinant of M
 detM = np.linalg.det(M)
 print("Determinant of M: {}".format(detM))
@@ -98,23 +99,19 @@ for it in range(Nt):
     t = it*dt
     print("Iteration: {}/{}".format(it, Nt))
     # Update the source
-    X[Nx+1+Nx//2, Ny//2] += source(t)
-    # Bz = X[Nx+1:, :]
-    # print("Bz shape: {}".format(Bz.shape))
-    # Update Ex
-    Ex[:,1:-1] = (ebs/dt - sigma/2)/(ebs/dt + sigma/2) * Ex[:,1:-1] + 1/(ebs/dt + sigma/2)*(1/(mu*dy))*(X[Nx+1:, 1:]-X[Nx+1:, :-1])
-
-    # Update Bz
     X = np.matmul(MinvL, X)
     Y = Ex[:-1, 1:] + Ex[1:,1:] - Ex[:-1,:-1] - Ex[1:,:-1]
     print("Y shape: {}".format(Y.shape))
-    X[:Nx, :] = X[:Nx, :] - 1/(dy)*Y
+    X[:Nx, :] = X[:Nx, :] + 1/(dy)*Y
+    X[Nx+1+Nx//2, Ny//2] += source(t)
 
+    Ex[:,1:-1] = (ebs/dt - sigma/2)/(ebs/dt + sigma/2) * Ex[:,1:-1] + 1/(ebs/dt + sigma/2)*(1/(mu*dy))*(X[Nx+1:, 1:]-X[Nx+1:, :-1])
+    Ex[:,0] = Ex[:,1]
+    Ex[:,-1] = Ex[:,-2]
     artists.append([plt.imshow(X[Nx+1:], cmap='RdBu', animated=True)])
 
 # Create an animation
-ani = ArtistAnimation(fig, artists, interval=50, blit=True)
+ani = ArtistAnimation(fig, artists, interval=200, blit=True)
 plt.show()
-
 
 
