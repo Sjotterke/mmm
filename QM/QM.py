@@ -3,12 +3,14 @@ import matplotlib.pyplot as plt
 from scipy.constants import *
 from PIL import Image, ImageDraw
 from io import BytesIO
+import time 
 
-video= 'False'
-video_filename= 'D:\School\Master2\MMM\output_video.gif'
+
+start= time.time()
 Number_of_timesteps= int(1e5) 
-discr_order= "fourth" #choose fourth or second order accurate discretization of Laplacian operator
+discr_order= "second" #choose fourth or second order accurate discretization of Laplacian operator
 
+# TODO: do this in a for loop to get differences between 2nd and fourth order on the same colorplot!!!! 
 
 Ly= 50*10**(-9) #m
 dy= 0.125*10**(-9) #m
@@ -50,7 +52,9 @@ PsiI= np.zeros(int(Ly//dy)+1)
 
 
 prob_dens= np.zeros((int(Ly//dy)+1, Number_of_timesteps))
-expectation_pos= np.zeros(Number_of_timesteps)
+expectation_pos= np.zeros(Number_of_timesteps, dtype= 'complex')
+expectation_mom= np.zeros(Number_of_timesteps, dtype= 'complex')
+expectation_energy= np.zeros(Number_of_timesteps, dtype= 'complex')
 for k in range(len(PsiR)):
     PsiR[k]= ground_state(k*dy)
     PsiR[0]= 0
@@ -59,8 +63,8 @@ Psi= PsiR + 1j* PsiI
 
 prob_dens[:,0]= np.real(np.conjugate(Psi) * Psi)
 expectation_pos[0]= np.sum(dy * kvalues * prob_dens[:,0]*dy) #prob density times dy gives prob so we get y*P(y)
-
-
+expectation_mom[0]= np.sum(-1j* hbar* np.conj(Psi) * np.gradient(Psi, dy))*dy
+expectation_energy[0]=  expectation_mom[0]/(2*e_mass)
 
 # Generate movie from frames
 frame_rate = 100  # Number of frames per second
@@ -80,21 +84,15 @@ for n in range(1,Number_of_timesteps):
     
     Psi= PsiR + 1j* PsiI
     prob_dens[:,n]= np.real(np.conjugate(Psi) * Psi)
-    expectation_pos[n]= np.sum(dy * kvalues * prob_dens[:,n]*dy)
+    expectation_pos[n]= np.sum(dy * kvalues * prob_dens[:,n])*dy
+    expectation_mom[n]= np.sum(-1j* hbar* np.conj(Psi) * np.gradient(Psi, dy))*dy
+    expectation_energy[n]=  expectation_mom[n]/(2*e_mass)
 
-    if video == 'True':
-        print("video")
-        buf = create_plot(prob_dens[:,n])
-        
-        # Convert plot to frame
-        img = Image.open(buf)
-        img = img.resize((frame_width, frame_height), Image.ANTIALIAS)
-        output_frames.append(img)
 
-# Save frames as video
-if video == 'True':
-    output_frames[0].save(video_filename, save_all=True, append_images=output_frames[1:], loop=0, duration= Number_of_timesteps*dt// frame_rate)
-# Create some mock data
+
+end= time.time()
+print("Time elapsed during the calculation:", end - start) 
+
 
 fig, ax1 = plt.subplots()
 color = 'tab:red'
@@ -111,5 +109,68 @@ ax2.plot(np.arange(Number_of_timesteps), expectation_pos, color=color)
 ax2.tick_params(axis='y', labelcolor=color)
 ax2.set_ylim(0, Ly)
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
-plt.show()
 
+
+fig, ax1 = plt.subplots()
+color = 'tab:red'
+ax1.set_xlabel('Timestep')
+ax1.set_ylabel('Gaussian Pulse', color=color)
+ax1.plot(np.arange(Number_of_timesteps), gaussian_pulse(np.arange(Number_of_timesteps)*dt), color=color)
+ax1.tick_params(axis='y', labelcolor=color)
+
+ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+color = 'tab:blue'
+ax2.set_ylabel('Expectation value of position', color=color)  # we already handled the x-label with ax1
+ax2.plot(np.arange(Number_of_timesteps), expectation_mom, color=color)
+ax2.tick_params(axis='y', labelcolor=color)
+fig.tight_layout()  # otherwise the right y-label is slightly clipped
+
+fig, ax1 = plt.subplots()
+color = 'tab:red'
+ax1.set_xlabel('Timestep')
+ax1.set_ylabel('Gaussian Pulse', color=color)
+ax1.plot(np.arange(Number_of_timesteps), gaussian_pulse(np.arange(Number_of_timesteps)*dt), color=color)
+ax1.tick_params(axis='y', labelcolor=color)
+
+ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+color = 'tab:blue'
+ax2.set_ylabel('Expectation value of energy', color=color)  # we already handled the x-label with ax1
+ax2.plot(np.arange(Number_of_timesteps), expectation_energy, color=color)
+ax2.tick_params(axis='y', labelcolor=color)
+fig.tight_layout()  # otherwise the right y-label is slightly clipped
+
+fig, ax1 = plt.subplots()
+color = 'tab:red'
+ax1.set_xlabel('Timestep')
+ax1.set_ylabel('Expectation value of the position', color=color)
+ax1.plot(np.arange(Number_of_timesteps), expectation_pos, color=color)
+ax1.tick_params(axis='y', labelcolor=color)
+
+ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+color = 'tab:blue'
+ax2.set_ylabel('Expectation value of the momentum', color=color)  # we already handled the x-label with ax1
+ax2.plot(np.arange(Number_of_timesteps), expectation_mom, color=color)
+ax2.tick_params(axis='y', labelcolor=color)
+fig.tight_layout()  # otherwise the right y-label is slightly clipped
+
+
+
+plt.figure(figsize=(10, 6))
+
+# Plot expectation value of position as function of time
+plt.plot(np.arange(Number_of_timesteps)*dt* 10**15, expectation_pos.real*10**9, label='Expectation Value of Position', color= 'black')
+
+# Overlay color plot of probability density
+plt.imshow(prob_dens, extent=[0, Number_of_timesteps*dt*10**15, 0, Ly*10**9], aspect='auto', origin='lower', cmap='terrain')
+plt.colorbar(label='Probability Density')
+plt.ylim(0,Ly*10**9)
+plt.xlabel('Time (fs)')
+plt.ylabel('Position (nm)')
+plt.title('Expectation Value of Position and Probability Density vs. Time')
+plt.grid(True)
+plt.legend()
+
+plt.show()
