@@ -15,8 +15,8 @@ mu = 1
 Nx = 300
 Ny = 300
 Nt = 100 
-Ly = 1.0
-Lx = 1.0
+Ly = 0.1
+Lx = 0.1
 dx = Lx/Nx
 dy = Ly/Ny
 # Courant Number and resulting timestep
@@ -94,13 +94,17 @@ for it in range(Nt):
     t = it*dt
     # print("Iteration: {}/{}".format(it, Nt))
      
-    X = np.matmul(MinvL, X)
+    # X = np.matmul(MinvL, X)
     Y = Ex[:-1, 1:] + Ex[1:,1:] - Ex[:-1,:-1] - Ex[1:,:-1]
-    Y_tot = np.vstack((Y, np.zeros((Nx+2, Ny))))
-    print("Y_tot shape: {}".format(Y_tot.shape))
+    
+    Y_tot = np.vstack((Y, np.zeros((2+Nx, Ny))))
 
+    print("Y_tot shape: {}".format(Y_tot.shape))
+    middel = np.matmul(L, X) + Y_tot
+    X = np.matmul(Minv, middel)
     # print("Y shape: {}".format(Y.shape))
-    X[1:Nx+1, :] = X[1:Nx+1, :] + np.matmul(Minv, 1/(dy)*Y_tot)[1:Nx+1, :]
+    
+    # X[1:Nx+1, :] +=  np.matmul(Minv, 1/(dy)*Y_tot)[1:Nx+1, :]
     X[Nx+1+Nx//2, Ny//2] += np.sin(t) 
 
     Ex[:,1:-1] = (ebs/dt - sigma/2)/(ebs/dt + sigma/2) * Ex[:,1:-1] + 1/(ebs/dt + sigma/2)*(1/(mu*dy))*(X[Nx+1:, 1:]-X[Nx+1:, :-1])
@@ -110,7 +114,7 @@ for it in range(Nt):
     artists.append([plt.imshow(X[Nx+1:], cmap='RdBu', animated=True)])
 
 # Create an animation
-ani = ArtistAnimation(fig, artists, interval=200, blit=True)
+ani = ArtistAnimation(fig, artists, interval=50, blit=True)
 plt.show()
 print("total time: {}".format(Nt*dt))
 print("X[Nx+1:] is Bz, shape: {}".format(X[Nx+1:].shape))
