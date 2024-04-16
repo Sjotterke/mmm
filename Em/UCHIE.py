@@ -88,6 +88,7 @@ MinvL = np.matmul(Minv, L)
 #source specs
 # source = GaussianSource(tc=15, sigma=3)
 # source.plot(tarray)
+omega = 1e6 # rad/s
 Ex = np.zeros((Nx+1, Ny+1)) 
 # Create fig for animation
 fig, ax = plt.subplots()
@@ -104,8 +105,7 @@ for it in range(Nt):
     Y_tot = np.vstack((Y, np.zeros((2+Nx, Ny))))
 
     # print("Y_tot shape: {}".format(Y_tot.shape))
-    if it == 0:
-        X[Nx+1+Nx//2, Ny//2] += J0
+    X[Nx+1+Nx//2, Ny//2] += J0*np.sin(omega*t)
     middel = np.matmul(L, X) + Y_tot
     X = np.matmul(Minv, middel)
     Ex[:,1:-1] = (ebs/dt - sigma/2)/(ebs/dt + sigma/2) * Ex[:,1:-1] + 1/(ebs/dt + sigma/2)*(1/(mu*dy))*(X[Nx+1:, 1:]-X[Nx+1:, :-1])
