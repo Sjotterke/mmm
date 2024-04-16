@@ -1,1 +1,1 @@
-source.plot(tarray)
+ X[Nx+1+Nx//2, Ny//2] += np.sin(0.0000000001*t) 
