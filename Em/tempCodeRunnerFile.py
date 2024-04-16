@@ -1,1 +1,1 @@
-source.plot(tarray)
+fig, axs = plt.subplots(2, 2)
