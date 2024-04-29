@@ -25,9 +25,12 @@ c = 3 * 10**8  # Speed of light m/s
 #Source specs
 J0 = 1
 # PML
+nx = 10
+ny = nx
 sigma_e = 1
 sigma_m = sigma_e/ebs*mu
 
+Nx_T = Nx + nx
 # Place sensors
 
 
@@ -40,59 +43,110 @@ print("dx: {}\ndy: {}".format(dx, dy))
 print("dt: {}".format(dt))
 # Define the fields
 X = np.zeros((2*Nx+2, Ny))
-def matrices_construct():
-    Ad = [[0 for _ in range(Nx+1)] for _ in range(Nx)]
-    Ai = [[0 for _ in range(Nx+1)] for _ in range(Nx)]
-    for i in range(Nx):
-        for j in range(Nx+1):
-            if i == j:
-                Ad[i][j] = -1
-                Ai[i][j] = 1
-            if i+1 == j:
-                Ad[i][j] = 1
-                Ai[i][j] = 1
-    M1 = np.hstack((1/dx*np.array(Ad), 1/dt*np.array(Ai)))
-    M2 = np.hstack(((ebs/dt + sigma/2)*np.array(Ai), 1/(mu*dx)*np.array(Ad)))
-    M = np.vstack((M1, M2)) 
-    L1 = np.hstack((-1/dx*np.array(Ad), 1/dt*np.array(Ai)))
-    L2 = np.hstack(((ebs/dt - sigma/2)*np.array(Ai), -1/(mu*dx)*np.array(Ad)))
-    L = np.vstack((L1, L2))
+def matrices_construct(a,b,c,d):
+    Ad = [[0 for _ in range(Nx_T+1)] for _ in range(Nx_T)]
+    Ai = [[0 for _ in range(Nx_T+1)] for _ in range(Nx_T)]
+    for i in range(Nx_T):
+        if i == nx-1:
+            for j in range(Nx_T+1):
+                if i == j:
+                    Ad[i][j] = -1 *a ### PML coefficient for Ad
+                    Ai[i][j] = 1 *b ### PML coefficient for Ai
+                if i+1 == j:
+                    Ad[i][j] = 1 * c ### NO PML coefficient for Ad
+                    Ai[i][j] = 1 * d ### NO PML coefficient for Ai
+        elif i == Nx_T - nx:
+            for j in range(Nx_T+1):
+                if i == j:
+                    Ad[i][j] = -1 * c
+                    Ai[i][j] = 1 * d
+                if i+1 == j:
+                    Ad[i][j] = 1 *a
+                    Ai[i][j] = 1 *b
+        elif i < nx-1 or i > Nx_T - nx:
+            for j in range(Nx_T+1):
+                if i == j:
+                    Ad[i][j] = -1 * a
+                    Ai[i][j] = 1 * b
+                if i+1 == j:
+                    Ad[i][j] = 1 * a
+                    Ai[i][j] = 1 * b 
+        else:
+            for j in range(Nx+1):
+                if i == j:
+                    Ad[i][j] = -1 * c
+                    Ai[i][j] = 1 *d
+                if i+1 == j:
+                    Ad[i][j] = 1 * c
+                    Ai[i][j] = 1 * d
+
+    # M1 = np.hstack((1/dx*np.array(Ad), 1/dt*np.array(Ai)))
+    # M2 = np.hstack(((ebs/dt + sigma/2)*np.array(Ai), 1/(mu*dx)*np.array(Ad)))
+    # M = np.vstack((M1, M2)) 
+    # L1 = np.hstack((-1/dx*np.array(Ad), 1/dt*np.array(Ai)))
+    # L2 = np.hstack(((ebs/dt - sigma/2)*np.array(Ai), -1/(mu*dx)*np.array(Ad)))
+    # L = np.vstack((L1, L2))
 
     #####################   PML   ##############################
-    m_pml1 = np.hstack((1/dx * np.array(Ad), (1/dt + sigma_m/2) * np.array(Ai), np.zeros((Nx, Nx+1))))
-    m_pml2 = np.hstack((ebs/dt *np.array(Ai), 1/(mu*dx)*np.array(Ad),1/(mu*dx)*np.array(Ad)))
-    m_pml3 = np.hstack((np.zeros((Nx,2*Nx+2)), np.eye(Nx), np.zeros((Nx,1))))
-    print("m_pml3 shape: {}".format(m_pml3.shape))
-    M_PML = np.vstack((m_pml1, m_pml2, m_pml3))
-    l_pml1 = np.hstack((-1/dx * np.array(Ad), (1/dt - sigma_m/2) * np.array(Ai), np.zeros((Nx, Nx+1))))
-    l_pml2 = np.hstack((ebs/dt *np.array(Ai), -1/(mu*dx)*np.array(Ad),  -1/(mu*dx)*np.array(Ad)))
-    L_PML = np.vstack((l_pml1, l_pml2, m_pml3))
-    return np.array(Ad), np.array(Ai),M, L, M_PML, L_PML
+    ##### overal PML ####
+    # m_pml1 = np.hstack((1/dx * np.array(Ad), (1/dt + sigma_m/2) * np.array(Ai), np.zeros((Nx, Nx+1))))
+    # m_pml2 = np.hstack((ebs/dt *np.array(Ai), 1/(mu*dx)*np.array(Ad),1/(mu*dx)*np.array(Ad)))
+    # m_pml3 = np.hstack((np.zeros((Nx,2*Nx+2)), np.eye(Nx), np.zeros((Nx,1))))
+    ##### PML in x direction ####
+    # M1 = np.hstack((1/dx*np.array(Ad), 1/dt*np.array(Ai), np.zeros((Nx, Nx+1))))
+    # M2 = np.hstack(((ebs/dt + sigma/2)*np.array(Ai), 1/(mu*dx)*np.array(Ad), 1/(mu*dx)*np.array(Ad)))
+    # M3 = np.hstack((np.zeros((Nx,2*Nx+2)), np.eye(Nx), np.zeros((Nx,1))))
+    # M = np.vstack((M1, M2,  M3)) 
+    # print("m_pml3 shape: {}".format(m_pml3.shape))
+    # M_PML = np.vstack((m_pml1, m_pml2, m_pml3))
+    # l_pml1 = np.hstack((-1/dx * np.array(Ad), (1/dt - sigma_m/2) * np.array(Ai), np.zeros((Nx, Nx+1))))
+    # l_pml2 = np.hstack((ebs/dt *np.array(Ai), -1/(mu*dx)*np.array(Ad),  -1/(mu*dx)*np.array(Ad)))
+    # L_PML = np.vstack((l_pml1, l_pml2, m_pml3))
+    return np.array(Ad), np.array(Ai)
 
-matrices_construct()
-AD, AI, M, L, M_PML,L_PML  = matrices_construct()
+MR1, MR2 = matrices_construct(1/dx,ebs/dt,1/dx,ebs/dt) # first Ad coef in PML, second Ai coef in PML, third Ad coef NO PML, fourth Ai coef NO PML
+MR_0 = np.zeros((Nx_T, Nx_T+1))
+MR_E = np.hstack((np.eye(Nx_T), np.zeros((Nx_T,1))))
+MC1 = np.vstack((MR1, MR2, MR_0))
+MR2, MR1 = matrices_construct(1/(mu*dx),1/dt+sigma_m/2,1/(mu*dx),1/dt)
+MC2 = np.vstack((MR1, MR2, MR_0))
+MR2, MR1 = matrices_construct(1/(mu*dx),0, 1/(mu*dx),0)
+MC3 = np.vstack((MR1, MR2, MR_E))
+M_PML = np.hstack((MC1, MC2, MC3))
+
+LR1, LR2 = matrices_construct(-1/dx,ebs/dt,-1/dx,ebs/dt) # first Ad coef in PML, second Ai coef in PML, third Ad coef NO PML, fourth Ai coef NO PML
+
+LC1 = np.vstack((LR1, LR2, MR_0))
+LR2, LR1 = matrices_construct(-1/(mu*dx),1/dt-sigma_m/2,-1/(mu*dx),1/dt)
+LC2 = np.vstack((LR1, LR2, MR_0))
+LR2, LR1 = matrices_construct(-1/(mu*dx),0, -1/(mu*dx),0)
+LC3 = np.vstack((LR1, LR2, MR_E))
+L_PML = np.hstack((LC1, LC2, LC3))
+
+
+
 print("PML M\n{}".format(M_PML))
 print("M_PML shape: {}".format(M_PML.shape))
 # X contains values of Ey and Bz
-X = np.zeros((3*Nx+3, Ny))
+X = np.zeros((3*Nx_T+3, Ny))
 
 # Periodic Boundary Conditions 1 in x direction
-BC1 = np.zeros((1, 3*Nx+3))
+BC1 = np.zeros((1, 3*Nx_T+3))
 BC1[0,0] = 1
 BC1[0, Nx] = -1
 M_PML = np.vstack((M_PML, BC1))
 #Periodic Boundary Conditions 2 in x direction
-BC2 = np.zeros((1, 3*Nx+3))
+BC2 = np.zeros((1, 3*Nx_T+3))
 BC2[0,Nx+1] = 1
 BC2[0, 2*Nx] = -1
 M_PML = np.vstack((M_PML, BC2))
 # Periodic Boundary Conditions 3 in x direction
-BC3 = np.zeros((1, 3*Nx+3))
+BC3 = np.zeros((1, 3*Nx_T+3))
 BC3[0, 2*Nx+1] = 1
 BC3[0, -1] = -1
 M_PML = np.vstack((M_PML, BC3))
 # ALL BC for L_PML
-L_PML = np.vstack((L_PML, np.zeros((3, 3*Nx+3))))
+L_PML = np.vstack((L_PML, np.zeros((3, 3*Nx_T+3))))
 print("M_PML shape after BC: {}".format(M_PML.shape))
 
 # check determinant of M non-zero
@@ -109,7 +163,7 @@ sig = tc/6 #see project why
 omega = 1e12 # rad/s
 def source(t):
     return J0*np.sin(omega*t)*np.exp(-(t-tc)**2/(2*sig**2))
-Ex = np.zeros((Nx+1, Ny+1)) 
+Ex = np.zeros((Nx_T+1, Ny+1)) 
 # Create fig for animation
 if animation == True:
     fig, ax = plt.subplots()
@@ -128,17 +182,18 @@ it3 = (3*Nx//4, 3*Ny//4)
 itlist = [it1, it2, it3]
 for it in range(Nt):
     t = it*dt
-    # print("Iteration: {}/{}".format(it, Nt))
+    print("Iteration: {}/{}".format(it, Nt))
 
     Y = Ex[:-1, 1:] - Ex[:-1,:-1]
-    P = np.vstack((np.zeros((2*Nx+2, Ny)),Y, np.zeros((1,Ny))))
+    P = np.vstack((np.zeros((2*Nx_T+2, Ny)),Y, np.zeros((1,Ny))))
 
-    # # print("Y_tot shape: {}".format(Y_tot.shape))
+    # print("Y_tot shape: {}".format(Y_tot.shape))
     X[Nx+1+Nx//2, Ny//2] += source(t)/2
     X[2*Nx+2+Nx//2, Ny//2] += source(t)/2 
-    middel = np.matmul(L_PML, X) 
-    X = np.matmul(M_PML_inv, middel) + dt/dy*P
-    Bz = X[Nx+1:2*Nx+2]+X[2*Nx+2:]
+    # print("L_PML shape: {}\n X shape: {}\n P shape: {}".format(L_PML.shape, X.shape, P.shape))
+    middel = np.matmul(L_PML, X) + (dt/(dy))*P
+    X = np.matmul(M_PML_inv, middel) 
+    Bz = X[Nx_T+1:2*Nx_T+2]+X[2*Nx_T+2:]
     # print(Bz.shape)
     Ex[:,1:-1] = (ebs/dt - sigma_e/2)/(ebs/dt + sigma/2) * Ex[:,1:-1] + 1/(ebs/dt + sigma_e/2)*(1/(mu*dy))*(Bz[:, 1:]-Bz[:, :-1])
     
