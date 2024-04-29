@@ -9,14 +9,13 @@ plot = False
 # material properties
 ebs = 8.854 * 10**(-12) # Permittivity of free space F/m
 mu = 4 * math.pi * 10**(-7) # Permeability of free space H/m
-sigma = 0.0
 
 
 
 # Define the grid
 Nx = 300 
 Ny = 300 
-Nt = 300
+Nt = 100
 Ly = 0.1
 Lx = 0.1
 dx = Lx/Nx
@@ -27,7 +26,7 @@ J0 = 1
 # PML
 nx = 10
 ny = nx
-sigma_e = 1
+sigma_e =100
 sigma_m = sigma_e/ebs*mu
 
 Nx_T = Nx + nx
@@ -80,28 +79,6 @@ def matrices_construct(a,b,c,d):
                     Ad[i][j] = 1 * c
                     Ai[i][j] = 1 * d
 
-    # M1 = np.hstack((1/dx*np.array(Ad), 1/dt*np.array(Ai)))
-    # M2 = np.hstack(((ebs/dt + sigma/2)*np.array(Ai), 1/(mu*dx)*np.array(Ad)))
-    # M = np.vstack((M1, M2)) 
-    # L1 = np.hstack((-1/dx*np.array(Ad), 1/dt*np.array(Ai)))
-    # L2 = np.hstack(((ebs/dt - sigma/2)*np.array(Ai), -1/(mu*dx)*np.array(Ad)))
-    # L = np.vstack((L1, L2))
-
-    #####################   PML   ##############################
-    ##### overal PML ####
-    # m_pml1 = np.hstack((1/dx * np.array(Ad), (1/dt + sigma_m/2) * np.array(Ai), np.zeros((Nx, Nx+1))))
-    # m_pml2 = np.hstack((ebs/dt *np.array(Ai), 1/(mu*dx)*np.array(Ad),1/(mu*dx)*np.array(Ad)))
-    # m_pml3 = np.hstack((np.zeros((Nx,2*Nx+2)), np.eye(Nx), np.zeros((Nx,1))))
-    ##### PML in x direction ####
-    # M1 = np.hstack((1/dx*np.array(Ad), 1/dt*np.array(Ai), np.zeros((Nx, Nx+1))))
-    # M2 = np.hstack(((ebs/dt + sigma/2)*np.array(Ai), 1/(mu*dx)*np.array(Ad), 1/(mu*dx)*np.array(Ad)))
-    # M3 = np.hstack((np.zeros((Nx,2*Nx+2)), np.eye(Nx), np.zeros((Nx,1))))
-    # M = np.vstack((M1, M2,  M3)) 
-    # print("m_pml3 shape: {}".format(m_pml3.shape))
-    # M_PML = np.vstack((m_pml1, m_pml2, m_pml3))
-    # l_pml1 = np.hstack((-1/dx * np.array(Ad), (1/dt - sigma_m/2) * np.array(Ai), np.zeros((Nx, Nx+1))))
-    # l_pml2 = np.hstack((ebs/dt *np.array(Ai), -1/(mu*dx)*np.array(Ad),  -1/(mu*dx)*np.array(Ad)))
-    # L_PML = np.vstack((l_pml1, l_pml2, m_pml3))
     return np.array(Ad), np.array(Ai)
 
 MR1, MR2 = matrices_construct(1/dx,ebs/dt,1/dx,ebs/dt) # first Ad coef in PML, second Ai coef in PML, third Ad coef NO PML, fourth Ai coef NO PML
@@ -185,18 +162,19 @@ for it in range(Nt):
     print("Iteration: {}/{}".format(it, Nt))
 
     Y = Ex[:-1, 1:] - Ex[:-1,:-1]
-    P = np.vstack((np.zeros((2*Nx_T+2, Ny)),Y, np.zeros((1,Ny))))
+    P = np.vstack((np.zeros((2*Nx_T, Ny)),Y, np.zeros((3,Ny))))
 
     # print("Y_tot shape: {}".format(Y_tot.shape))
-    X[Nx+1+Nx//2, Ny//2] += source(t)/2
-    X[2*Nx+2+Nx//2, Ny//2] += source(t)/2 
     # print("L_PML shape: {}\n X shape: {}\n P shape: {}".format(L_PML.shape, X.shape, P.shape))
     middel = np.matmul(L_PML, X) + (dt/(dy))*P
     X = np.matmul(M_PML_inv, middel) 
+
+    X[Nx_T+1+Nx_T//2, Ny//2] += source(t)/2
+    X[2*Nx_T+2+Nx_T//2, Ny//2] += source(t)/2 
     Bz = X[Nx_T+1:2*Nx_T+2]+X[2*Nx_T+2:]
-    # print(Bz.shape)
-    Ex[:,1:-1] = (ebs/dt - sigma_e/2)/(ebs/dt + sigma/2) * Ex[:,1:-1] + 1/(ebs/dt + sigma_e/2)*(1/(mu*dy))*(Bz[:, 1:]-Bz[:, :-1])
     
+    # print(Bz.shape)
+    Ex[:,1:-1] = (ebs/dt - sigma_e/2)/(ebs/dt + sigma_e/2) * Ex[:,1:-1] + 1/(ebs/dt + sigma_e/2)*(1/(mu*dy))*(Bz[:, 1:]-Bz[:, :-1])
     Ex[:,0] = 0
     Ex[:,-1] = 0
     

@@ -1,2 +1,2 @@
-axs[1,0].plot(filter_freq,  np.abs(filter_Bzt2_fft), label="t2")
-axs[1,0].plot(filter_freq,  np.abs(filter_Bzt3_fft), label="t3")
+    X[Nx+1+Nx//2, Ny//2] += source(t)/2
+    X[2*Nx+2+Nx//2, Ny//2] += source(t)/2 
