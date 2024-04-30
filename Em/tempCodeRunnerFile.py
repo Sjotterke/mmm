@@ -1,2 +1,6 @@
-    X[Nx+1+Nx//2, Ny//2] += source(t)/2
-    X[2*Nx+2+Nx//2, Ny//2] += source(t)/2 
+            if i == j:
+                Ad[i][j] = -1 * c
+                Ai[i][j] = 1 *d
+            if i+1 == j:
+                Ad[i][j] = 1 * c
+                Ai[i][j] = 1 * d

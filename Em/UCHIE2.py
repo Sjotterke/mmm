@@ -131,7 +131,7 @@ for it in range(Nt):
     Bzt2[it] = X[Nx+1+it2[0], it2[1]]
     Bzt3[it] = X[Nx+1+it3[0], it3[1]]
     if animation == True:
-        artists.append([plt.imshow(np.transpose(X[Nx+1:,:]), cmap='RdBu',animated=True),
+        artists.append([plt.imshow(np.transpose(X[Nx+1:,:]), vmin=-0.02*J0,vmax=0.02*J0,cmap='RdBu',animated=True),
                     
                         ])
 
