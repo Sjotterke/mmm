@@ -197,7 +197,7 @@ for it in range(Nt):
         Ex[i,1:-1] = (eps/dt -sigma_e* sigma_e_beg[i]/2)/(eps/dt +sigma_e* sigma_e_beg[i]/2) * Ex[i,1:-1] + 1/(eps/dt +sigma_e* sigma_e_beg[i]/2)*(1/(mu*dy))*(Bz[i, 1:]-Bz[i, :-1])
     Ex[nx:Nx,1:-1] = Ex[nx:Nx,1:-1] + 1/(eps/dt)*(1/(mu*dy))*(Bz[nx:Nx, 1:]-Bz[nx:Nx, :-1])
     for i in range(nx):
-        Ex[Nx+i,1:-1] = (eps/dt -sigma_e* sigma_e_eind[i]/2)/(eps/dt +sigma_e* sigma_e_eind[i]/2) * Ex[Nx+i,1:-1] + 1/(eps/dt +sigma_e* sigma_e_eind[i]/2)*(1/(mu*dy))*(Bz[Nx+i, 1:]-Bz[Nx+1, :-1])
+        Ex[Nx+i,1:-1] = (eps/dt -sigma_e* sigma_e_eind[i]/2)/(eps/dt +sigma_e* sigma_e_eind[i]/2) * Ex[Nx+i,1:-1] + 1/(eps/dt +sigma_e* sigma_e_eind[i]/2)*(1/(mu*dy))*(Bz[Nx+i, 1:]-Bz[Nx+i, :-1])
     #Ex[Nx:,1:-1] = (eps/dt - sigma_e/2)/(eps/dt + sigma_e/2) * Ex[Nx:,1:-1] + 1/(eps/dt + sigma_e/2)*(1/(mu*dy))*(Bz[Nx:, 1:]-Bz[Nx:, :-1])
     Ex[:,0] = 0
     Ex[:,-1] = 0
