@@ -89,7 +89,6 @@ def matrices_construct(a,b,c,d):
                 if i+1 == j:
                     Ad[i][j] = 1 * c
                     Ai[i][j] = 1 * d
-    print("Ad: {}".format(Ad))
     return np.array(Ad), np.array(Ai)
 
 
@@ -114,8 +113,8 @@ L_PML = np.hstack((LC1, LC2, LC3))
 
 
 
-print("PML M\n{}".format(M_PML))
-print("M_PML shape: {}".format(M_PML.shape))
+# print("PML M\n{}".format(M_PML))
+# print("M_PML shape: {}".format(M_PML.shape))
 # X contains values of Ey and Bz
 X = np.zeros((3*Nx_T+3, Ny))
 
