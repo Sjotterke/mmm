@@ -28,9 +28,13 @@ dy = Ly/Ny_T
 c = 3 * 10**8  # Speed of light m/s
 #Source specs
 J0 = 1
-sigma_e = 5e6
+sigma_e = 5e7
 sigma_m = sigma_e/eps*mu
+p=3
 
+sigma_e_beg = np.linspace(1, 0, nx)**p
+sigma_e_eind = np.linspace(0, 1, nx)**p
+print("sigma_e_beg: {}".format(sigma_e_beg))
 # Place sensors
 
 
@@ -43,44 +47,46 @@ print("Courant Number: {}\nTimestep: {}".format(CFL, dt))
 print("dx: {}\ndy: {}".format(dx, dy))
 print("dt: {}".format(dt))
 
-p = 1
 # do a and b with list and then do a[0] *(1/nx)**p  + a[1]
 def matrices_construct(a,b,c,d):
     Ad = [[0 for _ in range(Nx_T+1)] for _ in range(Nx_T)]
     Ai = [[0 for _ in range(Nx_T+1)] for _ in range(Nx_T)]
+    print("a[0]: {}\na[1]: {}".format(a[0], a[1]))
+    print("b[0]: {}\nb[1]: {}".format(b[0], b[1]))
     for i in range(Nx_T):
         if i == nx-1:
             for j in range(Nx_T+1):
                 if i == j:
-                    Ad[i][j] = -1 *a #* (1/nx)**p ### PML coefficient for Ad
-                    Ai[i][j] = 1 *b #* (1/nx)**p ### PML coefficient for Ai
+                    Ad[i][j] = -1 *(a[0]+a[1]) ### PML coefficient for Ad
+                    Ai[i][j] = 1 *(b[0]+b[1]*sigma_e_beg[i]) ### PML coefficient for Ai
                 if i+1 == j:
                     Ad[i][j] = 1 * c ### NO PML coefficient for Ad
                     Ai[i][j] = 1 * d ### NO PML coefficient for Ai
-        elif i == Nx_T - nx:
+        elif i == Nx:
             for j in range(Nx_T+1):
                 if i == j:
                     Ad[i][j] = -1 * c ### NO PML
                     Ai[i][j] = 1 * d  ### NO PML
                 if i+1 == j:
-                    Ad[i][j] = 1 *a #* (1/nx)**p ### PML
-                    Ai[i][j] = 1 *b #* (1/nx)**p ### PML
+                    Ad[i][j] = 1 *(a[0]+a[1]) #* (1/nx)**p ### PML
+                    Ai[i][j] = 1 *(b[0]+b[1]*sigma_e_eind[i-Nx]) ### PML
         elif i < nx-1:
             for j in range(Nx_T+1):
                 if i == j:
-                    Ad[i][j] = -1 * a#* ((30-i)/nx)**p ###  PML
-                    Ai[i][j] = 1 * b#* ((30-i)/nx)**p ### PML
+                    Ad[i][j] = -1 *(a[0]+a[1]) ###  PML
+                    Ai[i][j] = 1 *(b[0]+b[1]*sigma_e_beg[i])### PML
                 if i+1 == j:
-                    Ad[i][j] = 1 * a#* ((30-i)/nx)**p  ### PML
-                    Ai[i][j] = 1 * b# * ((30-i)/nx)**p ### PML
+                    Ad[i][j] = 1 *(a[0]+a[1]) ### PML
+                    Ai[i][j] = 1 *(b[0]+b[1]*sigma_e_beg[i])### PML
         elif i > Nx:
             for j in range(Nx_T+1):
                 if i == j:
-                    Ad[i][j] = -1 * a#* ((i-Nx)/nx)**p ### PML
-                    Ai[i][j] = 1 * b#* ((i-Nx)/nx)**p  ### PM
+                    Ad[i][j] = -1*(a[0]+a[1]) ### PML
+                    Ai[i][j] = 1*(b[0]+b[1]*sigma_e_eind[i-Nx]) #### PM L
                 if i+1 == j:
-                    Ad[i][j] = 1 * a#* ((i-Nx)/nx)**p ### PML
-                    Ai[i][j] = 1 * b# * ((i-Nx)/nx)**p ### PML
+                    Ad[i][j] = 1*(a[0]+a[1])#* ((i-Nx)/nx)**p ### PML
+                    #print("i: {}\nsigma_e_eind[i-Nx]: {}".format(i, sigma_e_eind[i-Nx]))
+                    Ai[i][j] = 1*(b[0]+b[1]*sigma_e_eind[i-Nx])#  ### PML
         else:
             for j in range(Nx_T+1):
                 if i == j:
@@ -92,22 +98,21 @@ def matrices_construct(a,b,c,d):
     return np.array(Ad), np.array(Ai)
 
 
-MR1, MR2 = matrices_construct(1/dx,eps/dt,1/dx,eps/dt) # first Ad coef in PML, second Ai coef in PML, third Ad coef NO PML, fourth Ai coef NO PML
+MR1, MR2 = matrices_construct([1/dx,0],[eps/dt,0],1/dx,eps/dt) # first Ad coef in PML, second Ai coef in PML, third Ad coef NO PML, fourth Ai coef NO PML
 MR_0 = np.zeros((Nx_T, Nx_T+1))
 MR_E = np.hstack((np.eye(Nx_T), np.zeros((Nx_T,1))))
 MC1 = np.vstack((MR1, MR2, MR_0))
-MR2, MR1 = matrices_construct(1/(mu*dx),1/dt+sigma_m/2,1/(mu*dx),1/dt)
+MR2, MR1 = matrices_construct([1/(mu*dx),0],[1/dt,sigma_m/2],1/(mu*dx),1/dt)
 MC2 = np.vstack((MR1, MR2, MR_0))
-MR2, MR1 = matrices_construct(1/(mu*dx),0, 1/(mu*dx),0)
+MR2, MR1 = matrices_construct([1/(mu*dx),0],[0,0], 1/(mu*dx),0)
 MC3 = np.vstack((MR1, MR2, MR_E))
 M_PML = np.hstack((MC1, MC2, MC3))
 
-LR1, LR2 = matrices_construct(-1/dx,eps/dt,-1/dx,eps/dt) # first Ad coef in PML, second Ai coef in PML, third Ad coef NO PML, fourth Ai coef NO PML
-
+LR1, LR2 = matrices_construct([-1/dx,0],[eps/dt,0],-1/dx,eps/dt) # first Ad coef in PML, second Ai coef in PML, third Ad coef NO PML, fourth Ai coef NO PML
 LC1 = np.vstack((LR1, LR2, MR_0))
-LR2, LR1 = matrices_construct(-1/(mu*dx),1/dt-sigma_m/2,-1/(mu*dx),1/dt)
+LR2, LR1 = matrices_construct([-1/(mu*dx),0],[1/dt,-sigma_m/2],-1/(mu*dx),1/dt)
 LC2 = np.vstack((LR1, LR2, MR_0))
-LR2, LR1 = matrices_construct(-1/(mu*dx),0, -1/(mu*dx),0)
+LR2, LR1 = matrices_construct([-1/(mu*dx),0],[0,0], -1/(mu*dx),0)
 LC3 = np.vstack((LR1, LR2, MR_E))
 L_PML = np.hstack((LC1, LC2, LC3))
 
@@ -186,10 +191,14 @@ for it in range(Nt):
     X = np.matmul(M_PML_inv, middel) 
 
     Bz = X[Nx_T+1:2*Nx_T+2]+X[2*Nx_T+2:]
-     
-    Ex[:nx,1:-1] = (eps/dt - sigma_e/2)/(eps/dt + sigma_e/2) * Ex[:nx,1:-1] + 1/(eps/dt + sigma_e/2)*(1/(mu*dy))*(Bz[:nx, 1:]-Bz[:nx, :-1])
+    
+    # Ex[:nx,1:-1] = (eps/dt - sigma_e/2)/(eps/dt + sigma_e/2) * Ex[:nx,1:-1] + 1/(eps/dt + sigma_e/2)*(1/(mu*dy))*(Bz[:nx, 1:]-Bz[:nx, :-1])
+    for i in range(nx):
+        Ex[i,1:-1] = (eps/dt -sigma_e* sigma_e_beg[i]/2)/(eps/dt +sigma_e* sigma_e_beg[i]/2) * Ex[i,1:-1] + 1/(eps/dt +sigma_e* sigma_e_beg[i]/2)*(1/(mu*dy))*(Bz[i, 1:]-Bz[i, :-1])
     Ex[nx:Nx,1:-1] = Ex[nx:Nx,1:-1] + 1/(eps/dt)*(1/(mu*dy))*(Bz[nx:Nx, 1:]-Bz[nx:Nx, :-1])
-    Ex[Nx:,1:-1] = (eps/dt - sigma_e/2)/(eps/dt + sigma_e/2) * Ex[Nx:,1:-1] + 1/(eps/dt + sigma_e/2)*(1/(mu*dy))*(Bz[Nx:, 1:]-Bz[Nx:, :-1])
+    for i in range(nx):
+        Ex[Nx+i,1:-1] = (eps/dt -sigma_e* sigma_e_eind[i]/2)/(eps/dt +sigma_e* sigma_e_eind[i]/2) * Ex[Nx+i,1:-1] + 1/(eps/dt +sigma_e* sigma_e_eind[i]/2)*(1/(mu*dy))*(Bz[Nx+i, 1:]-Bz[Nx+1, :-1])
+    #Ex[Nx:,1:-1] = (eps/dt - sigma_e/2)/(eps/dt + sigma_e/2) * Ex[Nx:,1:-1] + 1/(eps/dt + sigma_e/2)*(1/(mu*dy))*(Bz[Nx:, 1:]-Bz[Nx:, :-1])
     Ex[:,0] = 0
     Ex[:,-1] = 0
     
