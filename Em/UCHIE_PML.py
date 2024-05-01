@@ -7,30 +7,36 @@ import math
 animation =True
 plot = False
 # material properties
-ebs = 8.854 * 10**(-12) # Permittivity of free space F/m
+eps = 8.854 * 10**(-12) # Permittivity of free space F/m
 mu = 4 * math.pi * 10**(-7) # Permeability of free space H/m
 
 
 
 # Define the grid
-Nx = 300 
-Ny = 300 
-Nt = 100
+Nx = 200
+Ny = 200
+Nt = 200
 Ly = 0.1
 Lx = 0.1
-dx = Lx/Nx
-dy = Ly/Ny
+# PML
+nx = 30
+ny = nx
+Nx_T = Nx + nx
+Ny_T = Ny + ny
+dx = Lx/Nx_T
+dy = Ly/Ny_T
 c = 3 * 10**8  # Speed of light m/s
 #Source specs
 J0 = 1
-# PML
-nx = 10
-ny = nx
-sigma_e =100
-sigma_m = sigma_e/ebs*mu
+sigma_e = 5e7
+sigma_m = sigma_e/eps*mu
+p=3
 
-Nx_T = Nx + nx
+sigma_e_beg = np.linspace(1, 0, nx)**p
+sigma_e_eind = np.linspace(0, 1, nx)**p
+print("sigma_e_beg: {}".format(sigma_e_beg))
 # Place sensors
+
 
 
 # Courant Number and resulting timestep
@@ -40,86 +46,96 @@ tarray = np.linspace(0, Nt*dt, Nt)
 print("Courant Number: {}\nTimestep: {}".format(CFL, dt))
 print("dx: {}\ndy: {}".format(dx, dy))
 print("dt: {}".format(dt))
-# Define the fields
-X = np.zeros((2*Nx+2, Ny))
+
+# do a and b with list and then do a[0] *(1/nx)**p  + a[1]
 def matrices_construct(a,b,c,d):
     Ad = [[0 for _ in range(Nx_T+1)] for _ in range(Nx_T)]
     Ai = [[0 for _ in range(Nx_T+1)] for _ in range(Nx_T)]
+    print("a[0]: {}\na[1]: {}".format(a[0], a[1]))
+    print("b[0]: {}\nb[1]: {}".format(b[0], b[1]))
     for i in range(Nx_T):
         if i == nx-1:
             for j in range(Nx_T+1):
                 if i == j:
-                    Ad[i][j] = -1 *a ### PML coefficient for Ad
-                    Ai[i][j] = 1 *b ### PML coefficient for Ai
+                    Ad[i][j] = -1 *(a[0]+a[1]) ### PML coefficient for Ad
+                    Ai[i][j] = 1 *(b[0]+b[1]*sigma_e_beg[i]) ### PML coefficient for Ai
                 if i+1 == j:
                     Ad[i][j] = 1 * c ### NO PML coefficient for Ad
                     Ai[i][j] = 1 * d ### NO PML coefficient for Ai
-        elif i == Nx_T - nx:
+        elif i == Nx:
             for j in range(Nx_T+1):
                 if i == j:
-                    Ad[i][j] = -1 * c
-                    Ai[i][j] = 1 * d
+                    Ad[i][j] = -1 * c ### NO PML
+                    Ai[i][j] = 1 * d  ### NO PML
                 if i+1 == j:
-                    Ad[i][j] = 1 *a
-                    Ai[i][j] = 1 *b
-        elif i < nx-1 or i > Nx_T - nx:
+                    Ad[i][j] = 1 *(a[0]+a[1]) #* (1/nx)**p ### PML
+                    Ai[i][j] = 1 *(b[0]+b[1]*sigma_e_eind[i-Nx]) ### PML
+        elif i < nx-1:
             for j in range(Nx_T+1):
                 if i == j:
-                    Ad[i][j] = -1 * a
-                    Ai[i][j] = 1 * b
+                    Ad[i][j] = -1 *(a[0]+a[1]) ###  PML
+                    Ai[i][j] = 1 *(b[0]+b[1]*sigma_e_beg[i])### PML
                 if i+1 == j:
-                    Ad[i][j] = 1 * a
-                    Ai[i][j] = 1 * b 
+                    Ad[i][j] = 1 *(a[0]+a[1]) ### PML
+                    Ai[i][j] = 1 *(b[0]+b[1]*sigma_e_beg[i])### PML
+        elif i > Nx:
+            for j in range(Nx_T+1):
+                if i == j:
+                    Ad[i][j] = -1*(a[0]+a[1]) ### PML
+                    Ai[i][j] = 1*(b[0]+b[1]*sigma_e_eind[i-Nx]) #### PM L
+                if i+1 == j:
+                    Ad[i][j] = 1*(a[0]+a[1])#* ((i-Nx)/nx)**p ### PML
+                    #print("i: {}\nsigma_e_eind[i-Nx]: {}".format(i, sigma_e_eind[i-Nx]))
+                    Ai[i][j] = 1*(b[0]+b[1]*sigma_e_eind[i-Nx])#  ### PML
         else:
-            for j in range(Nx+1):
+            for j in range(Nx_T+1):
                 if i == j:
                     Ad[i][j] = -1 * c
                     Ai[i][j] = 1 *d
                 if i+1 == j:
                     Ad[i][j] = 1 * c
                     Ai[i][j] = 1 * d
-
     return np.array(Ad), np.array(Ai)
 
-MR1, MR2 = matrices_construct(1/dx,ebs/dt,1/dx,ebs/dt) # first Ad coef in PML, second Ai coef in PML, third Ad coef NO PML, fourth Ai coef NO PML
+
+MR1, MR2 = matrices_construct([1/dx,0],[eps/dt,0],1/dx,eps/dt) # first Ad coef in PML, second Ai coef in PML, third Ad coef NO PML, fourth Ai coef NO PML
 MR_0 = np.zeros((Nx_T, Nx_T+1))
 MR_E = np.hstack((np.eye(Nx_T), np.zeros((Nx_T,1))))
 MC1 = np.vstack((MR1, MR2, MR_0))
-MR2, MR1 = matrices_construct(1/(mu*dx),1/dt+sigma_m/2,1/(mu*dx),1/dt)
+MR2, MR1 = matrices_construct([1/(mu*dx),0],[1/dt,sigma_m/2],1/(mu*dx),1/dt)
 MC2 = np.vstack((MR1, MR2, MR_0))
-MR2, MR1 = matrices_construct(1/(mu*dx),0, 1/(mu*dx),0)
+MR2, MR1 = matrices_construct([1/(mu*dx),0],[0,0], 1/(mu*dx),0)
 MC3 = np.vstack((MR1, MR2, MR_E))
 M_PML = np.hstack((MC1, MC2, MC3))
 
-LR1, LR2 = matrices_construct(-1/dx,ebs/dt,-1/dx,ebs/dt) # first Ad coef in PML, second Ai coef in PML, third Ad coef NO PML, fourth Ai coef NO PML
-
+LR1, LR2 = matrices_construct([-1/dx,0],[eps/dt,0],-1/dx,eps/dt) # first Ad coef in PML, second Ai coef in PML, third Ad coef NO PML, fourth Ai coef NO PML
 LC1 = np.vstack((LR1, LR2, MR_0))
-LR2, LR1 = matrices_construct(-1/(mu*dx),1/dt-sigma_m/2,-1/(mu*dx),1/dt)
+LR2, LR1 = matrices_construct([-1/(mu*dx),0],[1/dt,-sigma_m/2],-1/(mu*dx),1/dt)
 LC2 = np.vstack((LR1, LR2, MR_0))
-LR2, LR1 = matrices_construct(-1/(mu*dx),0, -1/(mu*dx),0)
+LR2, LR1 = matrices_construct([-1/(mu*dx),0],[0,0], -1/(mu*dx),0)
 LC3 = np.vstack((LR1, LR2, MR_E))
 L_PML = np.hstack((LC1, LC2, LC3))
 
 
 
-print("PML M\n{}".format(M_PML))
-print("M_PML shape: {}".format(M_PML.shape))
+# print("PML M\n{}".format(M_PML))
+# print("M_PML shape: {}".format(M_PML.shape))
 # X contains values of Ey and Bz
 X = np.zeros((3*Nx_T+3, Ny))
 
 # Periodic Boundary Conditions 1 in x direction
 BC1 = np.zeros((1, 3*Nx_T+3))
 BC1[0,0] = 1
-BC1[0, Nx] = -1
+BC1[0, Nx_T] = -1
 M_PML = np.vstack((M_PML, BC1))
 #Periodic Boundary Conditions 2 in x direction
 BC2 = np.zeros((1, 3*Nx_T+3))
-BC2[0,Nx+1] = 1
-BC2[0, 2*Nx] = -1
+BC2[0,Nx_T+1] = 1
+BC2[0, 2*Nx_T] = -1
 M_PML = np.vstack((M_PML, BC2))
 # Periodic Boundary Conditions 3 in x direction
 BC3 = np.zeros((1, 3*Nx_T+3))
-BC3[0, 2*Nx+1] = 1
+BC3[0, 2*Nx_T+1] = 1
 BC3[0, -1] = -1
 M_PML = np.vstack((M_PML, BC3))
 # ALL BC for L_PML
@@ -157,24 +173,32 @@ it1 = (3*Nx//4, Ny//4)
 it2 = (3*Nx//4, Ny//2)
 it3 = (3*Nx//4, 3*Ny//4)
 itlist = [it1, it2, it3]
+
 for it in range(Nt):
     t = it*dt
     print("Iteration: {}/{}".format(it, Nt))
 
     Y = Ex[:-1, 1:] - Ex[:-1,:-1]
-    P = np.vstack((np.zeros((2*Nx_T, Ny)),Y, np.zeros((3,Ny))))
+    #Y = Ex[:-1, 1:] + Ex[1:,1:] - Ex[:-1,:-1] - Ex[1:,:-1]
+    P = np.vstack((np.zeros((2*Nx_T, Ny)), np.zeros((0,Ny)),Y, np.zeros((3,Ny))))
+    X[Nx_T+1+Nx_T//2, Ny//2] += source(t)/2
+    X[2*Nx_T+2+Nx_T//2, Ny//2] += source(t)/2 
 
     # print("Y_tot shape: {}".format(Y_tot.shape))
     # print("L_PML shape: {}\n X shape: {}\n P shape: {}".format(L_PML.shape, X.shape, P.shape))
+    
     middel = np.matmul(L_PML, X) + (dt/(dy))*P
     X = np.matmul(M_PML_inv, middel) 
 
-    X[Nx_T+1+Nx_T//2, Ny//2] += source(t)/2
-    X[2*Nx_T+2+Nx_T//2, Ny//2] += source(t)/2 
     Bz = X[Nx_T+1:2*Nx_T+2]+X[2*Nx_T+2:]
     
-    # print(Bz.shape)
-    Ex[:,1:-1] = (ebs/dt - sigma_e/2)/(ebs/dt + sigma_e/2) * Ex[:,1:-1] + 1/(ebs/dt + sigma_e/2)*(1/(mu*dy))*(Bz[:, 1:]-Bz[:, :-1])
+    # Ex[:nx,1:-1] = (eps/dt - sigma_e/2)/(eps/dt + sigma_e/2) * Ex[:nx,1:-1] + 1/(eps/dt + sigma_e/2)*(1/(mu*dy))*(Bz[:nx, 1:]-Bz[:nx, :-1])
+    for i in range(nx):
+        Ex[i,1:-1] = (eps/dt -sigma_e* sigma_e_beg[i]/2)/(eps/dt +sigma_e* sigma_e_beg[i]/2) * Ex[i,1:-1] + 1/(eps/dt +sigma_e* sigma_e_beg[i]/2)*(1/(mu*dy))*(Bz[i, 1:]-Bz[i, :-1])
+    Ex[nx:Nx,1:-1] = Ex[nx:Nx,1:-1] + 1/(eps/dt)*(1/(mu*dy))*(Bz[nx:Nx, 1:]-Bz[nx:Nx, :-1])
+    for i in range(nx):
+        Ex[Nx+i,1:-1] = (eps/dt -sigma_e* sigma_e_eind[i]/2)/(eps/dt +sigma_e* sigma_e_eind[i]/2) * Ex[Nx+i,1:-1] + 1/(eps/dt +sigma_e* sigma_e_eind[i]/2)*(1/(mu*dy))*(Bz[Nx+i, 1:]-Bz[Nx+i, :-1])
+    #Ex[Nx:,1:-1] = (eps/dt - sigma_e/2)/(eps/dt + sigma_e/2) * Ex[Nx:,1:-1] + 1/(eps/dt + sigma_e/2)*(1/(mu*dy))*(Bz[Nx:, 1:]-Bz[Nx:, :-1])
     Ex[:,0] = 0
     Ex[:,-1] = 0
     
