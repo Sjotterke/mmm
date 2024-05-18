@@ -192,7 +192,7 @@ for it in range(Nt):
     X = np.matmul(M_inv, np.matmul(L,X)+Y)
     X[3*Nx-1+Nx//2, Ny//2] += source(t)# source is added to hz
     if animation == True:
-        artists.append([plt.imshow(np.transpose(10*X[3*Nx-1:4*Nx]), cmap='viridis',vmin=-0.02*J0,vmax=0.02*J0,animated=True),
+        artists.append([plt.imshow(np.transpose(X[3*Nx-1:4*Nx]), cmap='viridis',vmin=-0.02*J0,vmax=0.02*J0,animated=True),
                     
                         ])
 
