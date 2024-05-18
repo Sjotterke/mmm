@@ -9,8 +9,8 @@ eps = 8.854 * 10**(-12) # Permittivity of free space F/m
 mu = 4 * math.pi * 10**(-7) # Permeability of free space H/m
 
 c = 3 * 10**8  # Speed of light m/s
-nx_PML = 10
-ny_PML = 10
+nx_PML =20 
+ny_PML =20 
 nx =100
 ny =100 
 Nx = nx_PML*2 + nx
