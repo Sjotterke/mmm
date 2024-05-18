@@ -175,15 +175,15 @@ for it in range(Nt):
     ex_old = copy.deepcopy(ex_)
     ex__[:,1:-1] = ex__[:,1:-1] + dtau/dy*(X[3*Nx-1:4*Nx,1:]- X[3*Nx-1:4*Nx,:-1])
 
-    ex_ = (ex_ + 1/dtau*(ex__-ex__old))
+    ex_ = (ex_ + (ex__-ex__old))
     #ex =1/np.reshape(Beta_pz,(Ny+1, 1))*(np.reshape(Beta_mz,(Ny+1,1)) * ex + Beta_px* ex_ - Beta_mx*ex_old)
     ex = ex + dtau*(ex_ - ex_old)
 
 
     ########### Implicit equations ############
-    Y[Nx:2*Nx,:]=1/dy * np.matmul(A2,ex[:,1:]-ex[:,:-1])
-    Y[3*Nx-1+Nx//2, Ny//2] += source(t)# source is added to hz
+    Y[Nx+1:2*Nx+1,:]= np.matmul(A2/dy,ex[:,1:]-ex[:,:-1])
     X = np.matmul(M_inv, np.matmul(L,X)+Y)
+    X[3*Nx-1+Nx//2, Ny//2] += source(t)# source is added to hz
     if animation == True:
         artists.append([plt.imshow(np.transpose(100*X[3*Nx-1:4*Nx]), cmap='viridis',vmin=-0.02*J0,vmax=0.02*J0,animated=True),
                     
