@@ -12,8 +12,8 @@ c = 3 * 10**8  # Speed of light m/s
 nx_PML = 10
 ny_PML = 10
 nz_PML = 10
-nx =20 
-ny =20 
+nx =100 
+ny =100 
 Nx = nx_PML*2 + nx
 Ny = ny_PML*2 + ny
 Nt = 100
@@ -30,13 +30,13 @@ print("dx: {}\ndy: {}".format(dx, dy))
 print("dt: {}".format(dt))
 
 ##############
-Z0 = 1
-sig_DC = 1
-sig_DC2 = Z0*sig_DC 
-gamma = 1
-gamma2 = c * gamma
-alpha_p = 2*gamma2/dtau + 1
-alpha_m = alpha_p - 2
+# Z0 = 1
+# sig_DC = 1
+# sig_DC2 = Z0*sig_DC 
+# gamma = 1
+# gamma2 = c * gamma
+# alpha_p = 2*gamma2/dtau + 1
+# alpha_m = alpha_p - 2
 
 m=4 
 ########## sigma
@@ -61,16 +61,23 @@ print("kappa_x {}".format(Kappa_x))
 print("kx: {}".format(kx))
 
 
-Beta_px = Kx/dtau + Z0* Sx/2
-beta_px= kx/dtau + Z0*sx/2
-beta_mx = kx/dtau - Z0*sx/2
-Beta_mx = Kx/dtau - Z0*Sx/2
-beta_py = ky/dtau + Z0* sy/2
-Beta_py = Ky/dtau + Z0* Sy/2
-beta_my= ky/dtau - Z0*sy/2
-Beta_my = Ky/dtau-Z0*Sy/2
-print("beta_px: {} beta_mx= {} beta_py: {} beta_my {}".format(Beta_px.shape, beta_px.shape, beta_py.shape, beta_my.shape))
-
+# Beta_px = Kx/dtau + Z0* Sx/2
+# beta_px= kx/dtau + Z0*sx/2
+# beta_mx = kx/dtau - Z0*sx/2
+# Beta_mx = Kx/dtau - Z0*Sx/2
+# beta_py = ky/dtau + Z0* sy/2
+# Beta_py = Ky/dtau + Z0* Sy/2
+# beta_my= ky/dtau - Z0*sy/2
+# Beta_my = Ky/dtau-Z0*Sy/2
+# print("beta_px: {} beta_mx= {} beta_py: {} beta_my {}".format(Beta_px.shape, beta_px.shape, beta_py.shape, beta_my.shape))
+Beta_px =1/dtau
+beta_px=1 /dtau
+beta_mx = 1/dtau
+Beta_mx =1/dtau
+beta_py =1/dtau
+Beta_py= 1/dtau
+beta_my=1/dtau
+Beta_my =1/dtau 
 A1 = np.zeros((Nx, Nx-1))
 A2 = np.zeros((Nx, Nx+1))
 for ix in range(Nx):
@@ -95,15 +102,15 @@ D2 = np.zeros((Nx, Nx+1))
 for ix in range(Nx):
     for iy in range(Nx-1):
         if ix == iy:
-            D1[ix, iy] = 1
+            D1[ix, iy] = 1/dx
         if ix == iy+1:
-            D1[ix, iy] = -1
+            D1[ix, iy] = -1/dx
 for ix in range(Nx):
     for iy in range(Nx+1):
         if ix == iy:
-            D2[ix, iy] = -1
+            D2[ix, iy] = -1/dx
         if ix == iy-1:
-            D2[ix,iy]=1
+            D2[ix,iy]=1/dx
 
 
 print("D1 shape: {}".format(D1.shape))
@@ -114,10 +121,10 @@ s_0= np.zeros((Nx,Nx-1))
 b_0 = np.zeros((Nx, Nx+1))
 
 ######## M ################
-r_1 = np.hstack((A1/dtau ,b_0, s_0, 1/dx*D2, s_0))
-r_2 = np.hstack((s_0, Beta_px*A2, s_0,b_0, 1/dx*D1))
-r_3 = np.hstack((-np.eye(Nx-1)/dtau, np.zeros((Nx-1, Nx+1)), np.eye(Nx-1) , np.zeros((Nx-1,Nx+1)),np.zeros((Nx-1,Nx-1))))
-r_4 = np.hstack((np.zeros((Nx+1, Nx-1)), -np.eye(Nx+1), np.zeros((Nx+1,Nx-1)), Beta_py*np.eye(Nx+1),np.zeros((Nx+1, Nx-1))))
+r_1 = np.hstack((A1/dtau ,b_0, s_0, D2, s_0))
+r_2 = np.hstack((s_0, Beta_px*A2, s_0,b_0, D1))
+r_3 = np.hstack((-np.eye(Nx-1)/dtau, np.zeros((Nx-1, Nx+1)), 1/dtau*np.eye(Nx-1) , np.zeros((Nx-1,Nx+1)),np.zeros((Nx-1,Nx-1))))
+r_4 = np.hstack((np.zeros((Nx+1, Nx-1)), -1/dtau*np.eye(Nx+1), np.zeros((Nx+1,Nx-1)), Beta_py*np.eye(Nx+1),np.zeros((Nx+1, Nx-1))))
 r_5 = np.hstack((np.zeros((Nx-1, Nx-1)),np.zeros((Nx-1, Nx+1)),-beta_py*np.eye(Nx-1),np.zeros((Nx-1,Nx+1)),beta_px*np.eye(Nx-1)))
 print("M r_1 shape: {}\nr_2 shape: {}\nr_3 shape: {}\nr_4 shape: {}\nr_5 shape: {}\n".format(r_1.shape,r_2.shape,r_3.shape,r_4.shape,r_5.shape ))
 
@@ -127,10 +134,10 @@ print("M shape: {}".format(M.shape))
 print(np.linalg.matrix_rank(M))
 M_inv = np.linalg.inv(M)
 ########## L ################
-r_1 = np.hstack((A1/dtau ,b_0, s_0, -1/dx*D2, s_0))
-r_2 = np.hstack((s_0, Beta_mx*A2, s_0,b_0,-1/dx*D1))
-r_3 = np.hstack((-np.eye(Nx-1)/dtau, np.zeros((Nx-1, Nx+1)),  np.eye(Nx-1) , np.zeros((Nx-1,Nx+1)),np.zeros((Nx-1,Nx-1))))
-r_4 = np.hstack((np.zeros((Nx+1, Nx-1)), -np.eye(Nx+1), np.zeros((Nx+1,Nx-1)), Beta_my*np.eye(Nx+1),np.zeros((Nx+1, Nx-1))))
+r_1 = np.hstack((A1/dtau ,b_0, s_0, -D2, s_0))
+r_2 = np.hstack((s_0, Beta_mx*A2, s_0,b_0,-D1))
+r_3 = np.hstack((-np.eye(Nx-1)/dtau, np.zeros((Nx-1, Nx+1)),  1/dtau*np.eye(Nx-1) , np.zeros((Nx-1,Nx+1)),np.zeros((Nx-1,Nx-1))))
+r_4 = np.hstack((np.zeros((Nx+1, Nx-1)), -1/dtau*np.eye(Nx+1), np.zeros((Nx+1,Nx-1)), Beta_my*np.eye(Nx+1),np.zeros((Nx+1, Nx-1))))
 r_5 = np.hstack((np.zeros((Nx-1, Nx-1)),np.zeros((Nx-1, Nx+1)),-beta_my*np.eye(Nx-1),np.zeros((Nx-1,Nx+1)),beta_mx*np.eye(Nx-1)))
 
 print("L r_1 shape: {}\nr_2 shape: {}\nr_3 shape: {}\nr_4 shape: {}\nr_5 shape: {}\n".format(r_1.shape,r_2.shape,r_3.shape,r_4.shape,r_5.shape ))
@@ -177,15 +184,15 @@ for it in range(Nt):
 
     ex_ = (ex_ + (ex__-ex__old))
     #ex =1/np.reshape(Beta_pz,(Ny+1, 1))*(np.reshape(Beta_mz,(Ny+1,1)) * ex + Beta_px* ex_ - Beta_mx*ex_old)
-    ex = ex + dtau*(ex_ - ex_old)
+    ex = ex + (ex_ - ex_old)
 
 
     ########### Implicit equations ############
-    Y[Nx+1:2*Nx+1,:]= np.matmul(A2/dy,ex[:,1:]-ex[:,:-1])
+    Y[Nx:2*Nx,:]= np.matmul(A2/dy,ex[:,1:]-ex[:,:-1])
     X = np.matmul(M_inv, np.matmul(L,X)+Y)
     X[3*Nx-1+Nx//2, Ny//2] += source(t)# source is added to hz
     if animation == True:
-        artists.append([plt.imshow(np.transpose(100*X[3*Nx-1:4*Nx]), cmap='viridis',vmin=-0.02*J0,vmax=0.02*J0,animated=True),
+        artists.append([plt.imshow(np.transpose(10*X[3*Nx-1:4*Nx]), cmap='viridis',vmin=-0.02*J0,vmax=0.02*J0,animated=True),
                     
                         ])
 
