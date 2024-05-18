@@ -17,8 +17,8 @@ ny =100
 Nx = nx_PML*2 + nx
 Ny = ny_PML*2 + ny
 Nt = 100
-Lx = 0.1
-Ly = 0.1
+Lx = 0.01
+Ly = 0.01
 dx = Lx/Nx
 dy = Ly/Ny
 CFL = 0.9
@@ -49,8 +49,8 @@ sx = Sx[1:-1].copy()
 Sy = np.concatenate((Sigma_y[::-1], np.zeros((ny+1)), Sigma_y))
 sy = Sy[1:-1].copy()
 ############ kappa 
-kappa_Mx = 10
-kappa_My = 10
+kappa_Mx = 100
+kappa_My = 100
 Kappa_x = 1 + (kappa_Mx -1)*np.linspace(0,1,nx_PML)**m
 Kx = np.concatenate((Kappa_x[::-1], np.ones((nx+1)), Kappa_x))
 kx = Kx[1:-1].copy()
@@ -60,7 +60,7 @@ ky = Ky[1:-1].copy()
 print("kappa_x {}".format(Kappa_x))
 print("kx: {}".format(kx))
 
-
+Z0 = 10
 # Beta_px = Kx/dtau + Z0* Sx/2
 # beta_px= kx/dtau + Z0*sx/2
 # beta_mx = kx/dtau - Z0*sx/2
