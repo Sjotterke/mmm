@@ -64,7 +64,7 @@ beta_my= Ky[1:-1]/dtau - Z0*Sy[1:-1]
 Beta_my = Ky/dtau-Z0*Sy/2
 Bmy = np.diag(Beta_my)
 bmy = np.diag(beta_my)
-
+print("BETA PX {}\n ZO*SY/2= {}".format(Beta_px, Z0*Sy/2))
 # print("beta_px: {} beta_mx= {} beta_py: {} beta_my {}".format(Beta_px.shape, beta_px.shape, beta_py.shape, beta_my.shape))
 
 ######## PML out
@@ -122,12 +122,12 @@ b_0 = np.zeros((Nx, Nx+1))
 r_1 = np.hstack((A1/dtau ,                np.zeros((Nx, Nx+1)),          np.zeros((Nx, Nx-1)),            D2,                     np.zeros((Nx, Nx-1))))
 r_2 = np.hstack((np.zeros((Nx, Nx-1)),    A2@Bpx,                        np.zeros((Nx, Nx-1)) ,           np.zeros((Nx, Nx+1)),   D1))
 r_3 = np.hstack((-np.eye(Nx-1)/dtau,      np.zeros((Nx-1, Nx+1)),        1/dtau*np.eye(Nx-1) ,            np.zeros((Nx-1,Nx+1)),  np.zeros((Nx-1,Nx-1))))
-r_4 = np.hstack((np.zeros((Nx+1, Nx-1)),  -1/dtau*np.eye(Nx+1),          np.zeros((Nx+1,Nx-1)),           Beta_py*np.eye(Nx+1),   np.zeros((Nx+1, Nx-1))))
+r_4 = np.hstack((np.zeros((Nx+1, Nx-1)),  -1/dtau*np.eye(Nx+1),          np.zeros((Nx+1,Nx-1)),           Bpy,                    np.zeros((Nx+1, Nx-1))))
 r_5 = np.hstack((np.zeros((Nx-1, Nx-1)),  np.zeros((Nx-1, Nx+1)),        -bpy,                            np.zeros((Nx-1,Nx+1)),  bpx))
 print("M r_1 shape: {}\nr_2 shape: {}\nr_3 shape: {}\nr_4 shape: {}\nr_5 shape: {}\n".format(r_1.shape,r_2.shape,r_3.shape,r_4.shape,r_5.shape ))
 
 M = np.vstack((r_1,r_2,r_3,r_4,r_5))
-print("M shape: {}".format(M.shape))
+print("1/dtau = {}\nM shape: {}".format(1/dtau,M.shape))
 
 print(np.linalg.matrix_rank(M))
 M_inv = np.linalg.inv(M)
@@ -168,29 +168,24 @@ if animation == True:
     plt.xlabel("x")
     plt.ylabel("y")
 
-####### Beta make matrices
-Brp = np.reshape(Beta_py,(Nx+1,1))[::-1]
-Brm = np.reshape(Beta_py, (Nx+1, 1))[::-1]
-Bpy_inv = np.linalg.inv(Bpy)
+
 for it in range(Nt):
     t = it*dt
     print("Iteration: {}/{}".format(it, Nt))
 
     ######## Explicit equation #############
     ex__old = ex__.copy()
-    # ex__old = copy.deepcopy(ex__)
     ex_old = ex_.copy()
-    # ex_old = copy.deepcopy(ex_)
-    ex__[:,1:-1] = ex__[:,1:-1] + dtau/dy*(X[3*Nx-1:4*Nx,1:]- X[3*Nx-1:4*Nx,:-1])
-    ##### not complete
-    #ex_ = Beta_my/Beta_py* ex_ + 1/(Beta_py*dtau)*(ex__-ex__old)
-    #ex = ex + dtau*(Beta_px*ex_ - Beta_mx*ex_old)
-    ex_ =Bpy_inv@Bmy@ex_ + 1/(dtau)*Bpy_inv@(ex__-ex__old)
-    ex = ex + dtau*(Bpx@ex_ - Bmx@ex_old)
-    ######## No PML
+    
+    ##### no PML
     # ex__[:,1:-1] = ex__[:,1:-1] + dtau/dy*(X[3*Nx-1:4*Nx,1:]- X[3*Nx-1:4*Nx,:-1])
-    # ex_ = ex_ + (ex__-ex__old)
-    # ex = ex + ex_ - ex_old
+    #ex_ =  ex_ + (ex__-ex__old)
+    #ex = ex +  ex_- ex_old)
+
+    ######## PML
+    ex__[:,1:-1] = ex__[:,1:-1] + dtau/dy*(X[3*Nx-1:4*Nx,1:]- X[3*Nx-1:4*Nx,:-1])
+    ex_ = 1/Beta_py*(Beta_my*ex_ + 1/dtau*(ex__-ex__old))
+    ex = ex + (np.reshape(Beta_px, (Nx+1,1))*ex_ - np.reshape(Beta_mx, (Nx+1,1))*ex_old)*dtau
 
     ########### Implicit equations ############
     Y[Nx:2*Nx,:]= np.matmul(A2/dy,ex[:,1:]-ex[:,:-1])
