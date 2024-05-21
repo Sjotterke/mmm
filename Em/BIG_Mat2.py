@@ -6,16 +6,16 @@ import copy
 from scipy.special import hankel2
 
 animation = True
-plot =False
+plot =True
 
 eps = 8.854 * 10**(-12) # Permittivity of free space F/m
 mu = 4 * math.pi * 10**(-7) # Permeability of free space H/m
 
 c = 3 * 10**8  # Speed of light m/s
-nx_PML =20
-ny_PML =20 
-nx =100
-ny =100 
+nx_PML =10
+ny_PML =10 
+nx =200
+ny =200
 Nx = nx_PML*2 + nx
 Ny = ny_PML*2 + ny
 
@@ -137,28 +137,51 @@ print("D1 shape: {}".format(D1.shape))
 # print("D1: \n{}".format(D1))
 print("D2 shape {}".format(D2.shape))
 # print("D2: \n{}".format(D2))
-s_0= np.zeros((Nx,Nx-1))
-b_0 = np.zeros((Nx, Nx+1))
+def M_inv_L_j(j, bulk):
+    print("j in function: {}".format(j))
+    #### Check if Bulk M and L is already calculated and in case return it
+    if j>ny_PML+1 and j<Ny-ny_PML:
+        return bulk[0], bulk[1], bulk
+    Ssy = np.concatenate((Sigma_y[::-1], np.zeros((ny)), Sigma_y))
+    Kky = np.concatenate((kappa_y[::-1], np.ones((ny)), kappa_y))
+    p = Kky/dtau + Z0*Ssy/2
+    m =  Kky/dtau - Z0*Ssy/2
+    Bpy = np.diag(p[j]*np.ones(Ny+1))
+    bpy = np.diag(p[j]*np.ones(Ny-1))
+    Bmy = np.diag(m[j]*np.ones(Ny+1))
+    bmy = np.diag(m[j]*np.ones(Ny-1))
 
-######## M ################
-r_1 = np.hstack((A1/dtau ,                np.zeros((Nx, Nx+1)),          np.zeros((Nx, Nx-1)),            D2,                     np.zeros((Nx, Nx-1))))
-r_2 = np.hstack((np.zeros((Nx, Nx-1)),    A2@Bpx,                        np.zeros((Nx, Nx-1)) ,           np.zeros((Nx, Nx+1)),   D1))
-r_3 = np.hstack((-np.eye(Nx-1)/dtau,      np.zeros((Nx-1, Nx+1)),        1/dtau*np.eye(Nx-1) ,            np.zeros((Nx-1,Nx+1)),  np.zeros((Nx-1,Nx-1))))
-r_4 = np.hstack((np.zeros((Nx+1, Nx-1)),  -1/dtau*np.eye(Nx+1),          np.zeros((Nx+1,Nx-1)),           Bpy,                    np.zeros((Nx+1, Nx-1))))
-r_5 = np.hstack((np.zeros((Nx-1, Nx-1)),  np.zeros((Nx-1, Nx+1)),        -bpy,                            np.zeros((Nx-1,Nx+1)),  bpx))
+    ######## M ################
+    r_1 = np.hstack((A1/dtau ,                np.zeros((Nx, Nx+1)),          np.zeros((Nx, Nx-1)),            D2,                     np.zeros((Nx, Nx-1))))
+    r_2 = np.hstack((np.zeros((Nx, Nx-1)),    A2@Bpx,                        np.zeros((Nx, Nx-1)) ,           np.zeros((Nx, Nx+1)),   D1))
+    r_3 = np.hstack((-np.eye(Nx-1)/dtau,      np.zeros((Nx-1, Nx+1)),        1/dtau*np.eye(Nx-1) ,            np.zeros((Nx-1,Nx+1)),  np.zeros((Nx-1,Nx-1))))
+    r_4 = np.hstack((np.zeros((Nx+1, Nx-1)),  -1/dtau*np.eye(Nx+1),          np.zeros((Nx+1,Nx-1)),           Bpy,                    np.zeros((Nx+1, Nx-1))))
+    r_5 = np.hstack((np.zeros((Nx-1, Nx-1)),  np.zeros((Nx-1, Nx+1)),        -bpy,                            np.zeros((Nx-1,Nx+1)),  bpx))
 
-M = np.vstack((r_1,r_2,r_3,r_4,r_5))
-print("1/dtau = {}\nM shape: {}".format(1/dtau,M.shape))
+    M = np.vstack((r_1,r_2,r_3,r_4,r_5))
+    print("1/dtau = {}\nM shape: {}".format(1/dtau,M.shape))
+    
+    M_inv = np.linalg.inv(M)
+    ########## L ################
+    r_1 = np.hstack((A1/dtau ,               np.zeros((Nx, Nx+1)),          np.zeros((Nx, Nx-1)),           -D2,                   np.zeros((Nx, Nx-1))))
+    r_2 = np.hstack((np.zeros((Nx,Nx-1)),    A2@Bmx,                        np.zeros((Nx,Nx-1)),            np.zeros((Nx,Nx+1)),   -D1))
+    r_3 = np.hstack((-np.eye(Nx-1)/dtau,     np.zeros((Nx-1, Nx+1)),        1/dtau*np.eye(Nx-1) ,           np.zeros((Nx-1,Nx+1)), np.zeros((Nx-1,Nx-1))))
+    r_4 = np.hstack((np.zeros((Nx+1, Nx-1)), -1/dtau*np.eye(Nx+1),          np.zeros((Nx+1,Nx-1)),          Bmy,                   np.zeros((Nx+1, Nx-1))))
+    r_5 = np.hstack((np.zeros((Nx-1, Nx-1)), np.zeros((Nx-1, Nx+1)),        -bmy,                           np.zeros((Nx-1,Nx+1)), bmx))
 
-M_inv = np.linalg.inv(M)
-########## L ################
-r_1 = np.hstack((A1/dtau ,               np.zeros((Nx, Nx+1)),          np.zeros((Nx, Nx-1)),           -D2,                   np.zeros((Nx, Nx-1))))
-r_2 = np.hstack((np.zeros((Nx,Nx-1)),    A2@Bmx,                        np.zeros((Nx,Nx-1)),            np.zeros((Nx,Nx+1)),   -D1))
-r_3 = np.hstack((-np.eye(Nx-1)/dtau,     np.zeros((Nx-1, Nx+1)),        1/dtau*np.eye(Nx-1) ,           np.zeros((Nx-1,Nx+1)), np.zeros((Nx-1,Nx-1))))
-r_4 = np.hstack((np.zeros((Nx+1, Nx-1)), -1/dtau*np.eye(Nx+1),          np.zeros((Nx+1,Nx-1)),          Bmy,                   np.zeros((Nx+1, Nx-1))))
-r_5 = np.hstack((np.zeros((Nx-1, Nx-1)), np.zeros((Nx-1, Nx+1)),        -bmy,                           np.zeros((Nx-1,Nx+1)), bmx))
+    L = np.vstack((r_1,r_2, r_3, r_4, r_5))
+    if j>ny_PML:
+        bulk = [M_inv, L]
+    return M_inv, L, bulk
+M_invL = []
+L_L = []
+bulk = np.zeros(5)
+for j in range(Ny):
+    my_m, my_l, bulk = M_inv_L_j(j, bulk)
+    M_invL.append(my_m)
+    L_L.append(my_l)
+    
 
-L = np.vstack((r_1,r_2, r_3, r_4, r_5))
 
 ############# Construct fields ###########
 X = np.zeros((3*(Nx-1)+2*(Nx+1), Ny)) #ey hz_ ey_ hz ey#
@@ -218,10 +241,11 @@ for it in range(Nt):
     ex__[:,1:-1] = ex__[:,1:-1] + dtau/dy*(X[3*Nx-1:4*Nx,1:]- X[3*Nx-1:4*Nx,:-1])
     ex_ = 1/Beta_py*(Beta_my*ex_ + 1/dtau*(ex__-ex__old))
     ex = ex + (Beta_pxR*ex_ - Beta_mxR*ex_old)*dtau
-
+  
     ########### Implicit equations ############
     Y[Nx:2*Nx,:]= np.matmul(A2/dy,ex[:,1:]-ex[:,:-1])
-    X = np.matmul(M_inv, np.matmul(L,X)+Y)
+    for j in range(Ny):
+        X[:,j] = np.matmul(M_invL[j], np.matmul(L_L[j],X[:,j])+Y[:,j])
     X[3*Nx-1+Nx//2, Ny//2] += source(t)# source is added to hz
 
     ########### Update Trackers
@@ -230,7 +254,7 @@ for it in range(Nt):
         Bzt2[it] = X[3*Nx-1+it2[0], it2[1]]
         Bzt3[it] = X[3*Nx-1+it3[0], it3[1]]
     if animation == True:
-        artists.append([plt.imshow(np.transpose(X[3*Nx-1:4*Nx]), cmap='viridis',vmin=-0.01*J0,vmax=0.01*J0,animated=True),
+        artists.append([plt.imshow(np.transpose(10*X[3*Nx-1:4*Nx]), cmap='viridis',vmin=-0.01*J0,vmax=0.01*J0,animated=True),
         plt.scatter(it1[0], it1[1], color = "red"),
         plt.scatter(it2[0], it2[1], color = "red")
                     ])
@@ -361,10 +385,3 @@ if plot == True:
     # freq = np.fft.fftfreq(Nt, dt)
     # plt.plot(freq, np.abs(Bz_fft))
     # plt.show()
-
-
-
-
-
-
-    

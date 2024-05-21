@@ -4,33 +4,32 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import ArtistAnimation
 import copy
 from scipy.special import hankel2
-
-animation = True
-plot =False
+animation =True
+plot =True 
+omega_L = [432466666666.66656, 2e11, 3e11]
 
 eps = 8.854 * 10**(-12) # Permittivity of free space F/m
 mu = 4 * math.pi * 10**(-7) # Permeability of free space H/m
 
 c = 3 * 10**8  # Speed of light m/s
-nx_PML =20
-ny_PML =20 
-nx =100
-ny =100 
+nx_PML =30 
+ny_PML =30 
+nx =200
+ny =200 
 Nx = nx_PML*2 + nx
 Ny = ny_PML*2 + ny
-
-dx = 1 # m
-dy = 1# m
-Nt = 400
-Lx = dx * Nx 
-Ly = dy * Ny
-CFL = 1
+Nt = 1000
+Lx = 0.1
+Ly = 0.1
+dx = Lx/Nx
+dy = Ly/Ny
+CFL = 0.9 
 dt = CFL *dy/c
 dtau = dt * c
 tarray = np.linspace(0, Nt*dt, Nt)
 print("Courant Number: {}\nTimestep: {}".format(CFL, dt))
 print("dx: {}\ndy: {}".format(dx, dy))
-print("dt: {} t: {}".format(dt, dt*Nt))
+print("dt: {} t: {}".format(dt, Nt*dt))
 
 m=4 
 ########## sigma
@@ -41,7 +40,7 @@ Sigma_y = sig_My*np.linspace(0,1,ny_PML)**m
 Sx = np.concatenate((Sigma_x[::-1], np.zeros((nx+1)), Sigma_x))
 Sy = np.concatenate((Sigma_y[::-1], np.zeros((ny+1)), Sigma_y))
 ############ kappa 
-kappa_Mx = 10
+kappa_Mx = 8 
 kappa_My = kappa_Mx 
 Kappa_x = 1 + (kappa_Mx -1)*np.linspace(0,1,nx_PML)**m
 Kx = np.concatenate((Kappa_x[::-1], np.ones((nx+1)), Kappa_x))
@@ -68,36 +67,10 @@ beta_my= Ky[1:-1]/dtau - Z0*Sy[1:-1]
 Beta_my = Ky/dtau-Z0*Sy/2
 Bmy = np.diag(Beta_my)
 bmy = np.diag(beta_my)
-
-#################################### Testing
-def rev_unit(n):
-    a = np.zeros((n,n))
-    for i in range(n):
-        for j in range(n):
-            if i==n-1-j:
-                a[i,j]= 1
-    return a
-# sec_diag = rev_unit(Nx-1)
-# Sec_diag = rev_unit(Nx+1)
-# bmy = beta_my*sec_diag
-# Bmy = Beta_my*Sec_diag
-# print(bmy)
-# bpy = beta_my*sec_diag
-# Bpy = Beta_py*Sec_diag
-# print(Bpy)
-
 #print("BETA PX {}\n ZO*SY/2= {}".format(Beta_px, Z0*Sy/2))
 # print("beta_px: {} beta_mx= {} beta_py: {} beta_my {}".format(Beta_px.shape, beta_px.shape, beta_py.shape, beta_my.shape))
 
 ######## PML out
-# Beta_px =1/dtau
-# beta_px=1 /dtau
-# beta_mx = 1/dtau
-# Beta_mx =1/dtau
-# beta_py =1/dtau
-# Beta_py= 1/dtau
-# beta_my=1/dtau
-# Beta_my =1/dtau 
 A1 = np.zeros((Nx, Nx-1))
 A2 = np.zeros((Nx, Nx+1))
 for ix in range(Nx):
@@ -146,10 +119,12 @@ r_2 = np.hstack((np.zeros((Nx, Nx-1)),    A2@Bpx,                        np.zero
 r_3 = np.hstack((-np.eye(Nx-1)/dtau,      np.zeros((Nx-1, Nx+1)),        1/dtau*np.eye(Nx-1) ,            np.zeros((Nx-1,Nx+1)),  np.zeros((Nx-1,Nx-1))))
 r_4 = np.hstack((np.zeros((Nx+1, Nx-1)),  -1/dtau*np.eye(Nx+1),          np.zeros((Nx+1,Nx-1)),           Bpy,                    np.zeros((Nx+1, Nx-1))))
 r_5 = np.hstack((np.zeros((Nx-1, Nx-1)),  np.zeros((Nx-1, Nx+1)),        -bpy,                            np.zeros((Nx-1,Nx+1)),  bpx))
+print("M r_1 shape: {}\nr_2 shape: {}\nr_3 shape: {}\nr_4 shape: {}\nr_5 shape: {}\n".format(r_1.shape,r_2.shape,r_3.shape,r_4.shape,r_5.shape ))
 
 M = np.vstack((r_1,r_2,r_3,r_4,r_5))
 print("1/dtau = {}\nM shape: {}".format(1/dtau,M.shape))
 
+print(np.linalg.matrix_rank(M))
 M_inv = np.linalg.inv(M)
 ########## L ################
 r_1 = np.hstack((A1/dtau ,               np.zeros((Nx, Nx+1)),          np.zeros((Nx, Nx-1)),           -D2,                   np.zeros((Nx, Nx-1))))
@@ -158,7 +133,10 @@ r_3 = np.hstack((-np.eye(Nx-1)/dtau,     np.zeros((Nx-1, Nx+1)),        1/dtau*n
 r_4 = np.hstack((np.zeros((Nx+1, Nx-1)), -1/dtau*np.eye(Nx+1),          np.zeros((Nx+1,Nx-1)),          Bmy,                   np.zeros((Nx+1, Nx-1))))
 r_5 = np.hstack((np.zeros((Nx-1, Nx-1)), np.zeros((Nx-1, Nx+1)),        -bmy,                           np.zeros((Nx-1,Nx+1)), bmx))
 
+print("L r_1 shape: {}\nr_2 shape: {}\nr_3 shape: {}\nr_4 shape: {}\nr_5 shape: {}\n".format(r_1.shape,r_2.shape,r_3.shape,r_4.shape,r_5.shape ))
+
 L = np.vstack((r_1,r_2, r_3, r_4, r_5))
+print("L shape: {}".format(L.shape))
 
 ############# Construct fields ###########
 X = np.zeros((3*(Nx-1)+2*(Nx+1), Ny)) #ey hz_ ey_ hz ey#
@@ -172,12 +150,12 @@ ex = np.zeros((Nx+1,Ny+1))
 J0 = 1
 tc = Nt/5*dt
 sig = tc/6 #see project why
-omega = 1e18 # rad/s
+omega = omega_L[0] # rad/s
 
 
 
 def source(t):
-    return J0*np.exp(-(t-tc)**2/(2*sig**2))
+    return J0*np.sin(omega*t) *np.exp(-(t-tc)**2/(2*sig**2))
 if animation == True:
     fig, ax = plt.subplots()
     artists = []
@@ -189,18 +167,14 @@ if animation == True:
 Bzt1=np.zeros(Nt)
 Bzt2 = np.zeros(Nt)
 Bzt3 = np.zeros(Nt)
-it1 = (Nx//2+Nx//10, Ny//2 + Ny//10)
-it2 = (Nx//2+Nx//10, Ny//2)
-it3 = (Nx//2+Nx//10, Ny//2-Ny//10)
+it1 = (3*Nx//4, Ny//4)
+it2 = (3*Nx//4, Ny//2)
+it3 = (3*Nx//4, 3*Ny//4)
 itlist = [it1, it2, it3]
 
 ###### Reshape for explicit update
 Beta_pxR = np.reshape(Beta_px, (Nx+1,1))
-print(Beta_pxR)
 Beta_mxR = np.reshape(Beta_mx, (Nx+1,1))
-
-
-
 for it in range(Nt):
     t = it*dt
     print("Iteration: {}/{}".format(it, Nt))
@@ -230,9 +204,7 @@ for it in range(Nt):
         Bzt2[it] = X[3*Nx-1+it2[0], it2[1]]
         Bzt3[it] = X[3*Nx-1+it3[0], it3[1]]
     if animation == True:
-        artists.append([plt.imshow(np.transpose(X[3*Nx-1:4*Nx]), cmap='viridis',vmin=-0.01*J0,vmax=0.01*J0,animated=True),
-        plt.scatter(it1[0], it1[1], color = "red"),
-        plt.scatter(it2[0], it2[1], color = "red")
+        artists.append([plt.imshow(np.transpose(X[3*Nx-1:4*Nx]), cmap='viridis',vmin=-0.02*J0,vmax=0.02*J0,animated=True),
                     ])
 
 # Create an animation
@@ -256,34 +228,16 @@ if plot == True:
     axs[0,1].set_xlabel("t [s]")
     axs[0,1].set_ylabel("Bz [T]")
 
-    ## do fourier transform of source and trackers
-    np.concatenate((tarray, np.zeros(100)))
-    np.concatenate((Bzt1, np.zeros(100)))
-    np.concatenate((Bzt2, np.zeros(100)))
-    np.concatenate((Bzt3, np.zeros(100)))
+    ############# FT Source 
     source_fft = np.fft.fft(source(tarray))
     source_freq = np.fft.fftfreq(tarray.shape[-1], dt)
-    Bzt1_fft = np.fft.fft(Bzt1)
-    Bzt2_fft = np.fft.fft(Bzt2)
-    Bzt3_fft = np.fft.fft(Bzt3)
-    # index closest to omega and -omega plotting
-    idxp = np.abs(source_freq).argmin()
-    print(idxp)
-    idxm = np.abs(source_freq).argmin()
-    window = 30
-    print("source_freq_shape: {}".format(source_freq.shape))
-    startp = max(0, idxp-window)
-    startm = max(0, idxm-window)
-    endp = min(source_freq.shape[-1], idxp+window)
-    endm = min(source_freq.shape[-1], idxm+window)
-    print(startp, endp, startm, endm)
-    print("source_freq window: {}".format(source_freq[startp: endp]))
+   
 
     ana_fft = []
     for tracker in itlist:
-        x = abs(Nx//2-tracker[0])*dx
-        y = abs(Ny//2 - tracker[1])*dy
-        ana_fft.append(J0*mu/4*hankel2(0, source_freq/c * np.sqrt(x**2 + y**2)))
+        x = abs(Nx//2-tracker[0]) ### maal dx?
+        y = abs(Ny//2 - tracker[1])
+        ana_fft.append(J0*source_freq*mu/4*hankel2(0, source_freq/c * np.sqrt(x**2 + y**2)))
 
     axs[1,0].set_title("source freq transform")
     axs[1,0].plot(source_freq, np.abs(source_fft), label="omega: {:2e}".format(omega))
@@ -297,74 +251,39 @@ if plot == True:
     axs[1,1].plot(source_freq, np.abs(ana_fft[2]), label="t3")
     axs[1,1].legend()
     plt.show()
+    ########## FT Trackers 
+    Bzt1_fft = np.fft.fft(Bzt1)
+    Bzt2_fft = np.fft.fft(Bzt2)
+    Bzt3_fft = np.fft.fft(Bzt3)
+    ################  
+    idxm = np.abs(source_freq).argmin()
+    freq1 = np.abs(source_freq-omega_L[0]).argmin()
+    freq2 = np.abs(source_freq-omega_L[1]).argmin()
+    freq3 = np.abs(source_freq-omega_L[2]).argmin()
+    #print("minimum freq: {} Maximum freq: {}".format(np.min(np.abs(source_freq)),np.max(source_freq)))
+    print("frequentie 1 index: {} Value: {} Wanted: {} Difference: {}".format(freq1, source_freq[freq1], omega_L[0], source_freq[freq1]-omega_L[0]))
+    print("source_freq_shape: {}".format(source_freq.shape))
+    def ana_sol(xt, yt, f):
+        x = abs(xt-Nx//2)*dx ### maal dx?
+        print(x)
+        y = abs(yt-Ny//2)*dy
+        return -J0*f*mu/4*hankel2(0, f/c * np.sqrt(x**2 + y**2))
+    fig, (ax1, ax2) = plt.subplots(2,1)
+    ax1.set_title("FFT")
+    ax1.scatter(freq1, Bzt1_fft[freq1], color="blue", label="Tracker 1")
+    ax1.scatter(freq1, source_fft[freq1], color="orange", label="Source")
+    ax1.scatter(freq1, np.abs(ana_sol(it1[0],it1[1] ,freq1)), color="red", label="ana")
+    ax1.legend()
+    ax1.set_title("FFT")
 
 
-    # axs[0,1].set_title("tracker fft")
-    # axs[0,1].plot(source_freq, np.abs(Bzt1_fft), label="t1")
-    # axs[0,1].plot(source_freq, np.abs(Bzt2_fft), label="t2")
-    # axs[0,1].plot(source_freq, np.abs(Bzt3_fft), label="t3")
-    # axs[0,1].legend()
 
-    # Define the window around zero frequency to exclude
-    window = 5* 1e10
-
-
-    # Find the indices of frequencies within the window around zero
-
-    exclude_indices = np.where(source_freq < window)
-    filter_freq = np.delete(source_freq, exclude_indices)
-    filter_source = np.delete(source_fft, exclude_indices)
-    filter_ana_fft_1 = np.delete(ana_fft[0], exclude_indices)
-    filter_ana_fft_2 = np.delete(ana_fft[1], exclude_indices)
-    filter_ana_fft_3 = np.delete(ana_fft[2], exclude_indices)
-    filter_Bzt1_fft = np.delete(Bzt1_fft, exclude_indices)
-    filter_Bzt2_fft = np.delete(Bzt2_fft, exclude_indices)
-    filter_Bzt3_fft = np.delete(Bzt3_fft, exclude_indices)
-
-    idm = np.argmax(np.abs(filter_source))
-    id_window = 5
-    start = max(0, idm-id_window)
-    end = min(filter_source.shape[-1], idm+id_window)
-
-    fig, axs = plt.subplots(2, 2)
-
-    axs[0,0].set_title("analytisch tracker filter")
-    axs[0,0].scatter(filter_freq[start: end], np.abs(filter_ana_fft_1)[start:end], label="t1")
-    axs[0,0].scatter(filter_freq[start: end], np.abs(filter_ana_fft_2)[start:end], label="t2")
-    axs[0,0].scatter(filter_freq[start: end], np.abs(filter_ana_fft_3)[start:end], label="t3")
-    axs[0,0].legend()
-
-    axs[0,1].set_title("source fft filter")
-    axs[0,1].scatter(filter_freq[start:end], np.abs(filter_source)[start:end])
-
-    axs[1,0].set_title("tracker fft filter")
-    print("filter_freq shape: {}\n filter_Bzt1_fft: {}".format(filter_freq.shape, filter_Bzt1_fft.shape))
-    axs[1,0].scatter(filter_freq[start:end], np.abs(filter_Bzt1_fft)[start:end], label="t1")
-    axs[1,0].scatter(filter_freq[start:end],  np.abs(filter_Bzt2_fft)[start:end], label="t2")
-    axs[1,0].scatter(filter_freq[start:end],  np.abs(filter_Bzt3_fft)[start:end], label="t3")
-    axs[1,0].legend()
-
-    print("compare")
-    a =1 
-    axs[1,1].set_title("(num track / source) vs ana filter")
-    axs[1,1].scatter(filter_freq[start:end],a*np.abs(filter_Bzt1_fft)[start:end]/np.abs(filter_source)[start:end],label="t1 num")
-    axs[1,1].scatter(filter_freq[start:end], np.abs(filter_ana_fft_1)[start:end], label="analytisch")
-    axs[1,1].scatter(filter_freq[start:end],a*np.abs(filter_Bzt2_fft)[start:end]/np.abs(filter_source)[start:end], label="t2 num")
-    axs[1,1].scatter(filter_freq[start:end], np.abs(filter_ana_fft_2)[start:end], label="anlytisch")
-    axs[1,1].legend()
-
-
+    ax2.scatter(freq1, Bzt1_fft[freq1]/source_fft[freq1], color="blue", label="Tracker 1")
+    # ax1.scatter(freq1, source_fft[freq1], color="orange", label="Source")
+    ax2.scatter(freq1, np.abs(ana_sol(it1[0],it1[1] ,freq1)), color="red", label="ana")
+    print(np.abs(ana_sol(it1[0],it1[1] ,freq1)))
+    ax2.legend()
     plt.show()
-    # Bz = X[Nx+1:]
-    # Bz_fft = np.fft.fft(Bz)
-    # Bz_fft = np.fft.fftshift(Bz_fft)
-    # freq = np.fft.fftfreq(Nt, dt)
-    # plt.plot(freq, np.abs(Bz_fft))
-    # plt.show()
 
 
 
-
-
-
-    
