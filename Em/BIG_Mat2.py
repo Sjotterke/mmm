@@ -14,17 +14,17 @@ mu = 4 * math.pi * 10**(-7) # Permeability of free space H/m
 c = 3 * 10**8  # Speed of light m/s
 nx_PML =10
 ny_PML =10 
-nx =200
-ny =200
+nx =100
+ny =100
 Nx = nx_PML*2 + nx
 Ny = ny_PML*2 + ny
 
 dx = 1 # m
 dy = 1# m
-Nt = 400
+Nt = 100
 Lx = dx * Nx 
 Ly = dy * Ny
-CFL = 1
+CFL = 0.9
 dt = CFL *dy/c
 dtau = dt * c
 tarray = np.linspace(0, Nt*dt, Nt)
@@ -186,7 +186,7 @@ for j in range(Ny):
 ############# Construct fields ###########
 X = np.zeros((3*(Nx-1)+2*(Nx+1), Ny)) #ey hz_ ey_ hz ey#
 Y = np.zeros((3*(Nx-1)+2*(Nx+1), Ny)) # + matrix in for loop
-print("X shape: {}".format(X.shape))
+#print("X shape: {}".format(X.shape))
 ex__ = np.zeros((Nx+1,Ny+1))
 ex_ = np.zeros((Nx+1,Ny+1))
 ex = np.zeros((Nx+1,Ny+1))
@@ -195,11 +195,12 @@ ex = np.zeros((Nx+1,Ny+1))
 J0 = 1
 tc = Nt/5*dt
 sig = tc/6 #see project why
-omega = 1e18 # rad/s
+omega = 1e12 # rad/s
 
 
 
 def source(t):
+    # return J0 * np.sin(omega*t)
     return J0*np.exp(-(t-tc)**2/(2*sig**2))
 if animation == True:
     fig, ax = plt.subplots()
@@ -219,14 +220,14 @@ itlist = [it1, it2, it3]
 
 ###### Reshape for explicit update
 Beta_pxR = np.reshape(Beta_px, (Nx+1,1))
-print(Beta_pxR)
+#print(Beta_pxR)
 Beta_mxR = np.reshape(Beta_mx, (Nx+1,1))
 
 
 
 for it in range(Nt):
     t = it*dt
-    print("Iteration: {}/{}".format(it, Nt))
+    #print("Iteration: {}/{}".format(it, Nt))
 
     ######## Explicit equation #############
     ex__old = ex__.copy()
@@ -249,12 +250,11 @@ for it in range(Nt):
     X[3*Nx-1+Nx//2, Ny//2] += source(t)# source is added to hz
 
     ########### Update Trackers
-    if it>Nt//2:
-        Bzt1[it] = X[3*Nx-1+it1[0], it1[1]]
-        Bzt2[it] = X[3*Nx-1+it2[0], it2[1]]
-        Bzt3[it] = X[3*Nx-1+it3[0], it3[1]]
+    Bzt1[it] = X[3*Nx-1+it1[0], it1[1]]
+    Bzt2[it] = X[3*Nx-1+it2[0], it2[1]]
+    Bzt3[it] = X[3*Nx-1+it3[0], it3[1]]
     if animation == True:
-        artists.append([plt.imshow(np.transpose(10*X[3*Nx-1:4*Nx]), cmap='viridis',vmin=-0.01*J0,vmax=0.01*J0,animated=True),
+        artists.append([plt.imshow(np.transpose(X[3*Nx-1:4*Nx]), cmap='viridis',vmin=-0.01*J0,vmax=0.01*J0,animated=True),
         plt.scatter(it1[0], it1[1], color = "red"),
         plt.scatter(it2[0], it2[1], color = "red")
                     ])
@@ -275,42 +275,39 @@ if plot == True:
     axs[0,0].plot(tarray, Bzt3, label="t3")
     axs[0,0].legend()
 
-    axs[0,1].set_title("source")
+    axs[0,1].set_title("Source")
     axs[0,1].plot(tarray, source(tarray))
     axs[0,1].set_xlabel("t [s]")
     axs[0,1].set_ylabel("Bz [T]")
 
     ## do fourier transform of source and trackers
-    np.concatenate((tarray, np.zeros(100)))
-    np.concatenate((Bzt1, np.zeros(100)))
-    np.concatenate((Bzt2, np.zeros(100)))
-    np.concatenate((Bzt3, np.zeros(100)))
-    source_fft = np.fft.fft(source(tarray))
     source_freq = np.fft.fftfreq(tarray.shape[-1], dt)
+    source_fft = np.fft.fft(source(tarray))
     Bzt1_fft = np.fft.fft(Bzt1)
     Bzt2_fft = np.fft.fft(Bzt2)
     Bzt3_fft = np.fft.fft(Bzt3)
     # index closest to omega and -omega plotting
-    idxp = np.abs(source_freq).argmin()
+    idxp = (np.abs(source_freq)-1e3).argmin()
     print(idxp)
-    idxm = np.abs(source_freq).argmin()
-    window = 30
+    # idxm = np.abs(source_freq).argmin()
+    # window = 30
     print("source_freq_shape: {}".format(source_freq.shape))
-    startp = max(0, idxp-window)
-    startm = max(0, idxm-window)
-    endp = min(source_freq.shape[-1], idxp+window)
-    endm = min(source_freq.shape[-1], idxm+window)
-    print(startp, endp, startm, endm)
-    print("source_freq window: {}".format(source_freq[startp: endp]))
+    # startp = max(0, idxp-window)
+    # startm = max(0, idxm-window)
+    # endp = min(source_freq.shape[-1], idxp+window)
+    # endm = min(source_freq.shape[-1], idxm+window)
+    # print(startp, endp, startm, endm)
+    # print("source_freq window: {}".format(source_freq[startp: endp]))
 
     ana_fft = []
     for tracker in itlist:
         x = abs(Nx//2-tracker[0])*dx
         y = abs(Ny//2 - tracker[1])*dy
-        ana_fft.append(J0*mu/4*hankel2(0, source_freq/c * np.sqrt(x**2 + y**2)))
+        ana_fft.append(J0*eps*source_freq*2*math.pi/4*hankel2(0, source_freq/c * np.sqrt(x**2 + y**2)))
 
     axs[1,0].set_title("source freq transform")
-    axs[1,0].plot(source_freq, np.abs(source_fft), label="omega: {:2e}".format(omega))
+    axs[1,0].plot(source_freq, np.abs(source_fft), label="numerical")
+    axs[1,0].plot(source_freq, abs(J0)*np.sqrt(2*math.pi)*sig*np.exp(-(sig*2*math.pi*source_freq)**2/2), label="analytical")
     axs[1,0].set_xlabel("omega [rad/s]")
     axs[1,0].set_ylabel("Bz [T]")
     axs[1,0].legend()
@@ -330,12 +327,13 @@ if plot == True:
     # axs[0,1].legend()
 
     # Define the window around zero frequency to exclude
-    window = 5* 1e10
+    window = 5* 1e3
 
 
     # Find the indices of frequencies within the window around zero
 
     exclude_indices = np.where(source_freq < window)
+    print(exclude_indices)
     filter_freq = np.delete(source_freq, exclude_indices)
     filter_source = np.delete(source_fft, exclude_indices)
     filter_ana_fft_1 = np.delete(ana_fft[0], exclude_indices)
@@ -345,8 +343,8 @@ if plot == True:
     filter_Bzt2_fft = np.delete(Bzt2_fft, exclude_indices)
     filter_Bzt3_fft = np.delete(Bzt3_fft, exclude_indices)
 
-    idm = np.argmax(np.abs(filter_source))
-    id_window = 5
+    idm = np.abs(filter_source).argmax()
+    id_window = 50
     start = max(0, idm-id_window)
     end = min(filter_source.shape[-1], idm+id_window)
 
@@ -359,8 +357,11 @@ if plot == True:
     axs[0,0].legend()
 
     axs[0,1].set_title("source fft filter")
-    axs[0,1].scatter(filter_freq[start:end], np.abs(filter_source)[start:end])
-
+    #axs[0,1].scatter(filter_freq[start:end], np.abs(filter_source)[start:end])
+    def S_ana(rij):
+        return abs(J0)*np.sqrt(2*math.pi)*sig*np.exp(-(sig*2*math.pi*rij)**2/2)
+    axs[0,1].scatter(filter_freq[start: end], S_ana(filter_freq[start:end]), label="analytical")
+    
     axs[1,0].set_title("tracker fft filter")
     print("filter_freq shape: {}\n filter_Bzt1_fft: {}".format(filter_freq.shape, filter_Bzt1_fft.shape))
     axs[1,0].scatter(filter_freq[start:end], np.abs(filter_Bzt1_fft)[start:end], label="t1")
@@ -369,14 +370,16 @@ if plot == True:
     axs[1,0].legend()
 
     print("compare")
-    a =1 
+    a =dx/Nx * dy/Ny
+    print(source_freq)
+    start = 0
+    end = 5
     axs[1,1].set_title("(num track / source) vs ana filter")
-    axs[1,1].scatter(filter_freq[start:end],a*np.abs(filter_Bzt1_fft)[start:end]/np.abs(filter_source)[start:end],label="t1 num")
+    axs[1,1].scatter(filter_freq[start:end],a*dt*np.abs(filter_Bzt1_fft)[start:end]/S_ana(filter_freq[start:end]),label="t1 num")
     axs[1,1].scatter(filter_freq[start:end], np.abs(filter_ana_fft_1)[start:end], label="analytisch")
-    axs[1,1].scatter(filter_freq[start:end],a*np.abs(filter_Bzt2_fft)[start:end]/np.abs(filter_source)[start:end], label="t2 num")
+    axs[1,1].scatter(filter_freq[start:end],a*dt*np.abs(filter_Bzt2_fft)[start:end]/S_ana(filter_freq[start:end]), label="t2 num")
     axs[1,1].scatter(filter_freq[start:end], np.abs(filter_ana_fft_2)[start:end], label="anlytisch")
     axs[1,1].legend()
-
 
     plt.show()
     # Bz = X[Nx+1:]
